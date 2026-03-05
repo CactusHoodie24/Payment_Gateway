@@ -4,8 +4,9 @@ node_modules/
 # Ignore log files
 *.log
 
-# Ignore environment variables
+# Environment variables
 .env
+src/.env
 
 # Ignore IDE settings
 .vscode/
