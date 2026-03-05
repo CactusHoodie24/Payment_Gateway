@@ -26,6 +26,7 @@ const MerchantSchema = new Schema(
     tradingName: { type: String },
     email: { type: String, required: true, unique: true },
     phone: { type: String, required: true },
+    password: { type: String, required: true },
     address: { type: MerchantAddressSchema, required: true },
     contactPerson: { type: ContactPersonSchema, required: true },
     status: {
