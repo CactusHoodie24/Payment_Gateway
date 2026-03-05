@@ -1,9 +1,10 @@
 // config/database.js
+require('dotenv').config();
 const mongoose = require("mongoose");
 
 async function connectDB() {
   try {
-    await mongoose.connect("mongodb+srv://Hoodie:qHftR8JbRYDbpZc0@hoodiecluster.djymejy.mongodb.net/malipo?retryWrites=true&w=majority&appName=HoodieCluster");
+    await mongoose.connect(process.env.MONGO_URI);
 
     console.log("MongoDB connected");
   } catch (err) {

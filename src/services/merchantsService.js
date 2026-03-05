@@ -1,5 +1,5 @@
 // services/merchantsService.js
-const Merchant = require('../models/merchant'); // adjust path if needed
+const Merchant = require('../models/MerchantsModel.js'); // adjust path if needed
 
 const getAllMerchants = async (filters = {}, options = {}) => {
   const { status, search } = filters;

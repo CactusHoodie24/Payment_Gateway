@@ -7,7 +7,6 @@ const OtpModel = require('../models/OtPModel');
 const MongoUserRepository = require('../repository/userRepository')
 const userRepository = new MongoUserRepository();
 const usermodel = new UserModel()
-const jwt = require('jsonwebtoken');
 
 // Temporarily add this right after require('dotenv').config()
 console.log({
