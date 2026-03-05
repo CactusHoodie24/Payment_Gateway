@@ -1,0 +1,54 @@
+[
+  {
+    "businessName": "Acme Trading Co.",
+    "tradingName": "Acme Traders",
+    "email": "contact@acmetrading.com",
+    "phone": "+265991234567",
+    "address": {
+      "street": "123 Main Street",
+      "city": "Lilongwe",
+      "state": "Central",
+      "country": "Malawi",
+      "postalCode": "P.O. Box 101"
+    },
+    "contactPerson": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@acmetrading.com",
+      "phone": "+265998765432",
+      "position": "Manager"
+    },
+    "status": "active",
+    "registrationNumber": "REG123456",
+    "taxId": "TAX987654",
+    "onboardedBy": "adminUserId",
+    "createdAt": { "$date": "2026-03-05T00:00:00Z" },
+    "updatedAt": { "$date": "2026-03-05T00:00:00Z" }
+  },
+  {
+    "businessName": "Sunrise Supplies",
+    "tradingName": "Sunrise Co.",
+    "email": "info@sunrisesupplies.com",
+    "phone": "+265992345678",
+    "address": {
+      "street": "456 Market Road",
+      "city": "Blantyre",
+      "state": "Southern",
+      "country": "Malawi",
+      "postalCode": "P.O. Box 202"
+    },
+    "contactPerson": {
+      "firstName": "Alice",
+      "lastName": "Chirwa",
+      "email": "alice.chirwa@sunrisesupplies.com",
+      "phone": "+265997654321",
+      "position": "Director"
+    },
+    "status": "pending",
+    "registrationNumber": "REG654321",
+    "taxId": "TAX123456",
+    "onboardedBy": "adminUserId",
+    "createdAt": { "$date": "2026-03-05T00:00:00Z" },
+    "updatedAt": { "$date": "2026-03-05T00:00:00Z" }
+  }
+]
