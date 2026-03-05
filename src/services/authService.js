@@ -6,27 +6,15 @@ const OtpModel = require('../models/OtPModel');
 const MongoUserRepository = require('../repository/userRepository')
 const userRepository = new MongoUserRepository();
 const usermodel = new UserModel()
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Temporarily add this right after require('dotenv').config()
-console.log({
-  host: process.env.EMAIL_SERVER_HOST,
-  port: process.env.EMAIL_SERVER_PORT,
-  user: process.env.EMAIL_USER,
-  pass: process.env.EMAIL_PASSWORD ? '✅ set' : '❌ MISSING',
-});
 
 // ─── Nodemailer transporter ────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host:   process.env.EMAIL_SERVER_HOST,
-  port:   parseInt(process.env.EMAIL_SERVER_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
 
-const FROM = process.env.EMAIL_FROM || 'FundMe Malawi <noreply@fundmemalawi.com>';
+
+const FROM = 'Malipo Gateway Malawi <onboarding@resend.dev>';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function generateOtp() {
@@ -49,59 +37,19 @@ function generateToken(user) {
 
 // ─── Internal email dispatchers ────────────────────────────────────────────────
 async function dispatchOtpEmail(email, otp) {
-  await transporter.sendMail({
-    from:    FROM,
-    to:      email,
-    subject: 'Your FundMe Malawi Verification Code',
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
-        <div style="background:#e63946;padding:24px;text-align:center;">
-          <h1 style="color:#fff;margin:0;font-size:22px;">FundMe Malawi</h1>
-        </div>
-        <div style="padding:32px;">
-          <p style="margin:0 0 12px;">Hi <strong>${email}</strong>,</p>
-          <p style="margin:0 0 24px;color:#444;">
-            Use the verification code below to complete your account setup.
-            It expires in <strong>15 minutes</strong>.
-          </p>
-          <div style="background:#f4f4f4;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px;">
-            <span style="font-size:42px;font-weight:bold;letter-spacing:12px;color:#e63946;">${otp}</span>
-          </div>
-          <p style="color:#888;font-size:13px;margin:0;">
-            If you didn't create a FundMe Malawi account, you can safely ignore this email.
-          </p>
-        </div>
-      </div>
-    `,
-  });
+  try {
+    const result = await resend.emails.send({
+      from: FROM,
+      to: email,
+      subject: 'Your For Malipo Verification Code',
+      html: `<p>Your OTP is: <strong>${otp}</strong></p>`,
+    });
+
+  } catch (err) {
+    console.error('Failed to send OTP email:', err);
+  }
 }
 
-async function dispatchPasswordResetEmail(email, otp) {
-  await transporter.sendMail({
-    from:    FROM,
-    to:      email,
-    subject: 'Reset Your FundMe Malawi Password',
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
-        <div style="background:#e63946;padding:24px;text-align:center;">
-          <h1 style="color:#fff;margin:0;font-size:22px;">FundMe Malawi</h1>
-        </div>
-        <div style="padding:32px;">
-          <p style="margin:0 0 12px;">Hi <strong>${email}</strong>,</p>
-          <p style="margin:0 0 24px;color:#444;">
-            Use the code below to reset your password. It expires in <strong>15 minutes</strong>.
-          </p>
-          <div style="background:#f4f4f4;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px;">
-            <span style="font-size:42px;font-weight:bold;letter-spacing:12px;color:#e63946;">${otp}</span>
-          </div>
-          <p style="color:#888;font-size:13px;margin:0;">
-            If you didn't request a password reset, please ignore this email.
-          </p>
-        </div>
-      </div>
-    `,
-  });
-}
 
 // ─── AuthService ───────────────────────────────────────────────────────────────
 const AuthService = {
