@@ -46,6 +46,18 @@ async verify(email, otp) {
   return false; // OTP did not match
 }
 
+async checkVerified(email) {
+  const user = await UserModel.findOne({ email });
+
+  if (!user) {
+    // Optional: throw an error or just return false
+    return false;
+  }
+
+  // Return the verified status
+  return user.verified;
+}
+
 }
 
 module.exports = MongoUserRepository;

@@ -122,38 +122,65 @@ const AuthService = {
   },
 
   // POST /api/login
-  async login({ email, password }) {
-    const user = await userRepository.findByEmail(email);
-    if (!user) {
-      throw { status: 401, message: 'Invalid email or password.' };
-    }
+  // POST /api/login
+async login({ email, password }) {
+  // 1️⃣ Find the user by email
+  const user = await userRepository.findByEmail(email);
+  if (!user) {
+    throw { status: 401, message: 'Invalid email or password.' };
+  }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      throw { status: 401, message: 'Invalid email or password.' };
-    }
+  // 2️⃣ Compare password
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) {
+    throw { status: 401, message: 'Invalid email or password.' };
+  }
 
-     // ── Generate OTP ─────────────────────
-  const otp = generateOtp();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-  // Save OTP
-  await userRepository.update(email, otp);
-
-  // Send OTP email
-  await dispatchOtpEmail(email, otp);
-
+  // 3️⃣ Check if user is verified
+  if (user.verified) {
+    // Issue JWT immediately
+    const token = generateToken({
+      id: user._id || user.id,
+      email: user.email,
+      name: user.name,
+      phone: user.phoneNumber,
+      title: user.role
+    });
 
     return {
-      message: 'We have sent an otp to your email please verify.', 
+      status: 200,
+      message: 'Login successful. User is verified.',
       data: {
-        user: user.name,
-        verified: user.verified,
+        id: user._id || user.id,
+        name: user.name,
+        email: user.email,
         phoneNumber: user.phoneNumber,
         role: user.role
       },
+      token
     };
-  },
+  }
+
+  // 4️⃣ User is not verified → generate OTP
+  const otp = generateOtp();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+  await userRepository.update(email, otp); // save OTP in DB
+  await dispatchOtpEmail(email, otp);      // send OTP email
+
+  return {
+    status: 200,
+    message: 'We have sent an OTP to your email. Please verify.',
+    data: {
+      id: user._id || user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      verified: false
+    }
+  };
+},
 
   // POST /api/reset-password
   async sendResetOtp({ email }) {

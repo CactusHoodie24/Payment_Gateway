@@ -1,13 +1,33 @@
 const express        = require('express');
+const Joi = require('joi');
 const router         = express.Router();
 const AuthController = require('../controllers/authController');
 const authMiddleware  = require('../middleware/auth');
+const validateBody = require('../middleware/userValidation');
+
+// Define your schema
+const userSchema = Joi.object({
+  name: Joi.string().min(3).max(30).required(),
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).required(),
+  phoneNumber: Joi.string()
+    .pattern(/^[0-9]{10,15}$/) // Only digits, length 10-15
+    .required()
+    .messages({
+      'string.pattern.base': 'Phone number must be 10 to 15 digits'
+    })
+});
+
+const loginSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).required()
+});
 
 // POST /api/signup
-router.post('/register-user', AuthController.signup);
+router.post('/register-user', validateBody(userSchema), AuthController.signup);
 
 // POST /api/login
-router.post('/login', AuthController.login);
+router.post('/login', validateBody(loginSchema), AuthController.login);
 
 // POST /api/otp/generate        → send OTP via email or whatsapp (step 2)
 router.post('/generate-otp', AuthController.generateOtp);
