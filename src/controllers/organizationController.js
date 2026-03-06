@@ -1,20 +1,36 @@
 // src/controllers/organizationController.js
 const organizationService = require('../services/organizationService');
+const axios = require('axios');
 
 const organizationController = {
 
-  async create(req, res) {
+async create(req, res) {
     try {
-      const organization = await organizationService.createOrganization(req.body);
+        console.log(req.body)
+      const targetUrl = 'http://localhost:4000/users';
+
+      const response = await axios.post(targetUrl, req.body, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
       return res.status(201).json({
-        status: 'success',
-        message: 'Organization created successfully',
-        data: organization
+        status:  'success',
+        message: 'Organization created successfully.',
+        data:    response.data
       });
     } catch (error) {
-      return res.status(error.status || 500).json({
-        status: 'error',
-        message: error.message || 'Internal server error'
+      // axios wraps HTTP errors in error.response
+      if (error.response) {
+        return res.status(error.response.status).json({
+          status:  'error',
+          message: error.response.data?.message || 'Upstream service error.'
+        });
+      }
+      return res.status(500).json({
+        status:  'error',
+        message: error.message || 'Internal server error.'
       });
     }
   },

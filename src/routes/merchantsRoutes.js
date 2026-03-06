@@ -4,6 +4,8 @@ const router = express.Router();
 const merchantsController = require('../controllers/merchantsController');
 const authMiddleware  = require('../middleware/auth');
 
+
+
 router.post('/login', merchantsController.loginMerchant)
 
 // Get all merchants with optional filters
@@ -13,7 +15,7 @@ router.get('/', authMiddleware(['admin']), merchantsController.getMerchants);
 router.get('/:id', authMiddleware(['admin']), merchantsController.getMerchant);
 
 // Create a new merchant
-router.post('/', authMiddleware(['admin']), merchantsController.createMerchant);
+router.post('/', merchantsController.createMerchant);
 
 // Update a merchant by ID
 router.post('/update', authMiddleware(['admin']), merchantsController.updateMerchant);

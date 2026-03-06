@@ -2,8 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const organizationController = require('../controllers/organizationController');
+const validateOrganization = require('../middleware/validateOrganization');
 
-router.post('/',                        organizationController.create);
+router.post('/',   validateOrganization,                     organizationController.create);
 router.get('/',                         organizationController.getAll);
 router.get('/:id',                      organizationController.getById);
 router.put('/:id',                      organizationController.update);

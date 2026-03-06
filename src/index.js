@@ -25,6 +25,12 @@ const chargeProfileRoutes = require('./routes/chargeProfileRoutes')
 const chargeItemRoutes = require('./routes/chargeItemRoutes')
 const transactionTypeRoutes = require('./routes/transactionTypeRoutes');
 const organizationTypeRoutes = require('./routes/organizationTypeRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+const accountRoutes = require('./routes/accountRoutes');
+const organizationApiKeyRoutes = require('./routes/organizationApiKeyRoutes');
+
+
+
 
 
 const app = express();
@@ -49,6 +55,8 @@ app.use('/api', express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
+
 // Serve uploaded images as static files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -67,6 +75,9 @@ app.use('/api/charge-profiles', chargeProfileRoutes)
 app.use('/api/charge-items', chargeItemRoutes);
 app.use('/api/transaction-types', transactionTypeRoutes);
 app.use('/api/organization-types', organizationTypeRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/api-keys', organizationApiKeyRoutes);
 
 app.post("/api/users", apiLimiter, validateUser, async (req, res) => {
   try {

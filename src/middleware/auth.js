@@ -10,13 +10,12 @@ function authMiddleware(allowedRoles) {
     const authHeader = req.headers['authorization'];
 
     if (!authHeader) {
-      console.log("❌ No Authorization header received");
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const token = authHeader.split(' ')[1];
 
-    console.log("🔹 RAW TOKEN:", token);  // Log the exact token string received
+  
 
     try {
 
@@ -27,17 +26,11 @@ function authMiddleware(allowedRoles) {
       req.user = payload;
 
       // 🔍 DEBUG LOGS
-      console.log("──────── AUTH DEBUG ────────");
-      console.log("Allowed Roles:", allowedRoles);
+   
 
-      // Extra debug: check each key type
-      Object.keys(payload).forEach(key => {
-        console.log(`Payload Key: ${key}, Value: ${payload[key]}, Type: ${typeof payload[key]}`);
-      });
+      
 
-      console.log("Token Role:", payload.role);
-      console.log("Full Token Payload:", payload);
-      console.log("────────────────────────────");
+  
 
       // Role check
       if (allowedRoles && !allowedRoles.includes(payload.role)) {
