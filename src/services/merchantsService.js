@@ -1,5 +1,8 @@
 // services/merchantsService.js
 const Merchant = require('../models/MerchantsModel.js'); // adjust path if needed
+const bcrypt     = require('bcryptjs');
+const MerchantRepository = require('../repository/MerchantRepository.js');
+const merchantRepository = new MerchantRepository();
 
 const getAllMerchants = async (filters = {}, options = {}) => {
   const { status, search } = filters;
@@ -39,12 +42,18 @@ const createMerchant = async (data) => {
   return await merchant.save();
 };
 
-const updateMerchant = async (id, data) => {
-  return await Merchant.findByIdAndUpdate(id, data, { new: true });
+const updateMerchant = async (email, password) => {
+  const hashed = await bcrypt.hash(password, 12);
+
+  return await merchantRepository.updatePassword(email, hashed);
 };
 
 const deleteMerchant = async (id) => {
   return await Merchant.findByIdAndDelete(id);
+};
+
+const merchantByEmail = async (email) => {
+  return await merchantRepository.findByEmail(email);
 };
 
 module.exports = {
@@ -53,4 +62,5 @@ module.exports = {
   createMerchant,
   updateMerchant,
   deleteMerchant,
+  merchantByEmail,
 };
