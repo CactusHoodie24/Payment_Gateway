@@ -155,7 +155,8 @@ async login({ email, password }) {
         name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
-        role: user.role
+        role: user.role,
+        verified: user.verified
       },
       token
     };
