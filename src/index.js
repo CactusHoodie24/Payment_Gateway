@@ -6,7 +6,7 @@ const errorHandler = require('./middleware/errorHandler');
 const axios = require("axios");
 
 // Import MongoDB connection
-const connectDB = require('./db');
+const { connectDB } = require('./db');
 
 // Routes
 const authRoutes       = require('./routes/authRoutes');
@@ -20,6 +20,12 @@ const apiLimiter       = require('./middleware/rateLimiter');
 const validateBody     = require('./middleware/userValidation');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const validateUser = require("./middleware/validateUser");
+const organizationRoutes = require('./routes/organizationRoutes')
+const chargeProfileRoutes = require('./routes/chargeProfileRoutes')
+const chargeItemRoutes = require('./routes/chargeItemRoutes')
+const transactionTypeRoutes = require('./routes/transactionTypeRoutes');
+const organizationTypeRoutes = require('./routes/organizationTypeRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -56,6 +62,11 @@ app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use("/api/validator", validationRoutes);
 app.use('/api/merchants', merchantsRoute);
+app.use('/api/organizations', organizationRoutes)
+app.use('/api/charge-profiles', chargeProfileRoutes)
+app.use('/api/charge-items', chargeItemRoutes);
+app.use('/api/transaction-types', transactionTypeRoutes);
+app.use('/api/organization-types', organizationTypeRoutes);
 
 app.post("/api/users", apiLimiter, validateUser, async (req, res) => {
   try {

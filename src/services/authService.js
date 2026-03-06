@@ -1,20 +1,11 @@
-const bcrypt     = require('bcryptjs');
-const jwt        = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-const UserModel  = require('../models/UserModel');
-const OtpModel = require('../models/OtPModel');
-const MongoUserRepository = require('../repository/userRepository')
-const userRepository = new MongoUserRepository();
-const usermodel = new UserModel()
+// src/services/authService.js
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
 const { Resend } = require('resend');
+const AdminModel = require('../models/Admin');
+
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Temporarily add this right after require('dotenv').config()
-
-// ─── Nodemailer transporter ────────────────────────────────────────────────────
-
-
-const FROM = 'Malipo Gateway Malawi <onboarding@resend.dev>';
+const FROM   = 'Malipo Gateway Malawi <onboarding@resend.dev>';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function generateOtp() {
@@ -27,203 +18,190 @@ function generateToken(user) {
       id:    user.id,
       name:  user.name,
       email: user.email,
-      phone: user.phone,
-      role: user.role,
+      phone: user.phone_number,
+      role:  user.role,
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 }
 
-// ─── Internal email dispatchers ────────────────────────────────────────────────
+// ─── Email dispatchers ─────────────────────────────────────────────────────────
 async function dispatchOtpEmail(email, otp) {
   try {
-    const result = await resend.emails.send({
-      from: FROM,
-      to: email,
-      subject: 'Your For Malipo Verification Code',
-      html: `<p>Your OTP is: <strong>${otp}</strong></p>`,
+    await resend.emails.send({
+      from:    FROM,
+      to:      email,
+      subject: 'Your Malipo Verification Code',
+      html:    `<p>Your OTP is: <strong>${otp}</strong>. It expires in 15 minutes.</p>`,
     });
-
   } catch (err) {
     console.error('Failed to send OTP email:', err);
   }
 }
 
+async function dispatchPasswordResetEmail(email, name, otp) {
+  try {
+    await resend.emails.send({
+      from:    FROM,
+      to:      email,
+      subject: 'Your Malipo Password Reset Code',
+      html:    `<p>Hi ${name},</p><p>Your password reset OTP is: <strong>${otp}</strong>. It expires in 15 minutes.</p>`,
+    });
+  } catch (err) {
+    console.error('Failed to send password reset email:', err);
+  }
+}
 
 // ─── AuthService ───────────────────────────────────────────────────────────────
 const AuthService = {
 
-  // POST /api/signup
-  // Creates user → frontend opens channel picker → calls sendOtp
-  async signup({ name, email, phoneNumber, password, }) {
-
-    const existingEmail = await userRepository.findByEmail(email);
-    if (existingEmail) {
+  // POST /api/auth/signup
+  async signup({ name, email, phone_number, password }) {
+    const existing = await AdminModel.findOne({ email });
+    if (existing) {
       throw { status: 422, message: 'Email already in use.' };
     }
 
     const hashed = await bcrypt.hash(password, 12);
-    await userRepository.save({ name, email, phoneNumber, password: hashed });
+    await AdminModel.create({ name, email, password: hashed, phone_number });
 
     return { status: 200, message: 'Account created. Please verify your account.' };
   },
 
-  // POST /api/otp/generate
-  // Controller passes { email, phone, channel } — we only need email
+  // POST /api/auth/otp/generate
   async sendOtp({ email }) {
-    console.log(email)
-    if (!email) {
+    const admin = await AdminModel.findOne({ email });
+    if (!admin) {
       throw { status: 404, message: 'User not found.' };
     }
 
-    const otp       = generateOtp();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-    console.log(otp)
-    await OtpModel.save(email, otp, expiresAt)
+    const otp = generateOtp();
+    console.log('Generated OTP:', otp);
 
+    // Store OTP on the admin record
+    await AdminModel.setOtp(admin.id, otp);
     await dispatchOtpEmail(email, otp);
 
     return { status: 200, message: 'OTP sent to your email address.' };
   },
 
-  // POST /api/otp
-  // Verifies OTP, issues JWT
+  // POST /api/auth/otp/verify
   async verifyOtp({ email, otp }) {
-    const user = await userRepository.verify(email, otp);
-    console.log(user)
-    if (!user) {
+    const admin = await AdminModel.findOne({ email });
+    if (!admin) {
+      throw { status: 404, message: 'User not found.' };
+    }
+
+    if (!admin.otp || admin.otp !== otp) {
       throw { status: 400, message: 'Invalid or expired OTP.' };
     }
 
-     // Generate JWT token
-  const token = jwt.sign(
-    {
-      id: user._id,           // or user.id if using domain object
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    },
-    process.env.JWT_SECRET,    // Make sure this is defined
-    { expiresIn: '7d' }
-  );
+    // Mark verified and clear OTP
+    const verified = await AdminModel.verify(admin.id);
+
+    const token = generateToken(verified);
 
     return {
-    status: 200,
-    message: 'User is authenticated.',
-    data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+      status:  200,
+      message: 'User is authenticated.',
+      data: {
+        id:    verified.id,
+        name:  verified.name,
+        email: verified.email,
+        role:  verified.role,
       },
       token,
-  };
+    };
   },
 
-  // POST /api/login
-  // POST /api/login
-async login({ email, password }) {
-  // 1️⃣ Find the user by email
-  const user = await userRepository.findByEmail(email);
-  if (!user) {
-    throw { status: 401, message: 'Invalid email or password.' };
-  }
+  // POST /api/auth/login
+  async login({ email, password }) {
+    const admin = await AdminModel.findOne({ email });
+    if (!admin) {
+      throw { status: 401, message: 'Invalid email or password.' };
+    }
 
-  // 2️⃣ Compare password
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) {
-    throw { status: 401, message: 'Invalid email or password.' };
-  }
+    const match = await bcrypt.compare(password, admin.password);
+    if (!match) {
+      throw { status: 401, message: 'Invalid email or password.' };
+    }
 
-  // 3️⃣ Check if user is verified
-  if (user.verified) {
-    // 🔹 Debug log before token generation
-    console.log('LOGIN DEBUG - user object:', user);
-    console.log('LOGIN DEBUG - token payload:', {
-      id: user._id || user.id,
-      email: user.email,
-      name: user.name,
-      phone: user.phoneNumber,
-      role: user.role
-    });
+    // Verified — issue token immediately
+    if (admin.verified) {
+      const token = generateToken(admin);
+      return {
+        status:  200,
+        message: 'Login successful.',
+        data: {
+          id:           admin.id,
+          name:         admin.name,
+          email:        admin.email,
+          phone_number: admin.phone_number,
+          role:         admin.role,
+          verified:     !!admin.verified,
+        },
+        token,
+      };
+    }
 
-    // Issue JWT immediately
-    const token = generateToken({
-      id: user._id || user.id,
-      email: user.email,
-      name: user.name,
-      phone: user.phoneNumber,
-      role: user.role
-    });
+    // Not verified — send OTP and prompt verification
+    const otp = generateOtp();
+    await AdminModel.setOtp(admin.id, otp);
+    await dispatchOtpEmail(email, otp);
 
     return {
-      status: 200,
-      message: 'Login successful. User is verified.',
+      status:  200,
+      message: 'We have sent an OTP to your email. Please verify.',
       data: {
-        id: user._id || user.id,
-        name: user.name,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        role: user.role,
-        verified: user.verified
+        id:           admin.id,
+        name:         admin.name,
+        email:        admin.email,
+        phone_number: admin.phone_number,
+        role:         admin.role,
+        verified:     false,
       },
-      token
     };
-  }
+  },
 
-  // 4️⃣ User is not verified → generate OTP
-  const otp = generateOtp();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-
-  await userRepository.update(email, otp); // save OTP in DB
-  await dispatchOtpEmail(email, otp);      // send OTP email
-
-  return {
-    status: 200,
-    message: 'We have sent an OTP to your email. Please verify.',
-    data: {
-      id: user._id || user.id,
-      name: user.name,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      role: user.role,
-      verified: false
-    }
-  };
-},
-
-  // POST /api/reset-password
+  // POST /api/auth/reset-password
   async sendResetOtp({ email }) {
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
+    const admin = await AdminModel.findOne({ email });
+    // Always return the same message to avoid user enumeration
+    if (!admin) {
       return { message: 'If that email exists, a reset code has been sent.' };
     }
 
-    const otp       = generateOtp();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-    await UserModel.saveOtp(user.id, otp, expiresAt);
-    await dispatchPasswordResetEmail(user.email, user.name, otp);
+    const otp = generateOtp();
+    await AdminModel.setOtp(admin.id, otp);
+    await dispatchPasswordResetEmail(admin.email, admin.name, otp);
 
     return { message: 'If that email exists, a reset code has been sent.' };
   },
 
-  // POST /api/reset-password-confirm
+  // POST /api/auth/reset-password/confirm
   async resetPassword({ email, otp, password, password_confirmation }) {
     if (password !== password_confirmation) {
       throw { status: 422, message: 'Passwords do not match.' };
     }
 
-    const user = await UserModel.verifyOtp(email, otp);
-    if (!user) {
+    const admin = await AdminModel.findOne({ email });
+    if (!admin) {
+      throw { status: 400, message: 'Invalid or expired OTP.' };
+    }
+
+    if (!admin.otp || admin.otp !== otp) {
       throw { status: 400, message: 'Invalid or expired OTP.' };
     }
 
     const hashed = await bcrypt.hash(password, 12);
-    await UserModel.updatePassword(user.id, hashed);
+
+    // Update password and clear OTP
+    await AdminModel.findByIdAndUpdate(admin.id, { password: hashed, otp: null });
 
     return { message: 'Password reset successfully. Please log in.' };
   },
+
 };
 
 module.exports = AuthService;
