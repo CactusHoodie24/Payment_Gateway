@@ -28,7 +28,7 @@ function generateToken(user) {
       name:  user.name,
       email: user.email,
       phone: user.phone,
-      title: user.title,
+      role: user.role,
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
@@ -138,13 +138,23 @@ async login({ email, password }) {
 
   // 3️⃣ Check if user is verified
   if (user.verified) {
+    // 🔹 Debug log before token generation
+    console.log('LOGIN DEBUG - user object:', user);
+    console.log('LOGIN DEBUG - token payload:', {
+      id: user._id || user.id,
+      email: user.email,
+      name: user.name,
+      phone: user.phoneNumber,
+      role: user.role
+    });
+
     // Issue JWT immediately
     const token = generateToken({
       id: user._id || user.id,
       email: user.email,
       name: user.name,
       phone: user.phoneNumber,
-      title: user.role
+      role: user.role
     });
 
     return {

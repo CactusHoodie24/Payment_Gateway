@@ -16,6 +16,8 @@ function authMiddleware(allowedRoles) {
 
     const token = authHeader.split(' ')[1];
 
+    console.log("🔹 RAW TOKEN:", token);  // Log the exact token string received
+
     try {
 
       // Verify token
@@ -27,6 +29,12 @@ function authMiddleware(allowedRoles) {
       // 🔍 DEBUG LOGS
       console.log("──────── AUTH DEBUG ────────");
       console.log("Allowed Roles:", allowedRoles);
+
+      // Extra debug: check each key type
+      Object.keys(payload).forEach(key => {
+        console.log(`Payload Key: ${key}, Value: ${payload[key]}, Type: ${typeof payload[key]}`);
+      });
+
       console.log("Token Role:", payload.role);
       console.log("Full Token Payload:", payload);
       console.log("────────────────────────────");
@@ -40,9 +48,7 @@ function authMiddleware(allowedRoles) {
       next();
 
     } catch (err) {
-
       console.log("❌ JWT ERROR:", err.message);
-
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
   };
