@@ -28,20 +28,22 @@ class MongoUserRepository {
 
 async verify(email, otp) {
   const user = await UserModel.findOne({ email });
-
-  if (!user) return false; // email not found
+  if (!user) return false;
 
   console.log("OTP in DB:   ", user.otp);
   console.log("OTP provided:", otp);
 
-  // Check if OTP matches
   if (user.otp === otp) {
-    // Optionally clear OTP after successful verification
-    await UserModel.updateOne({ email }, { $set: { otp: null, verified: true } });
-    return true;
+    // Clear OTP and mark verified
+    await UserModel.updateOne(
+      { email },
+      { $set: { otp: null, verified: true } }
+    );
+
+    return user; // ✅ return the full user object
   }
 
-  return false; // OTP does not match
+  return false; // OTP did not match
 }
 
 }

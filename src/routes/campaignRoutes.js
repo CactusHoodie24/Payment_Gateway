@@ -1,39 +1,56 @@
-const express            = require('express');
-const router             = express.Router();
+const express = require('express');
+const router = express.Router();
+
 const CampaignController = require('../controllers/campaignController');
 const DonationController = require('../controllers/donationController');
-const { requireAuth }    = require('../middleware/auth');
-const upload             = require('../config/multer');
+const authMiddleware = require('../middleware/auth');
+const upload = require('../config/multer');
 
-// ── Public routes ──────────────────────────────────────────────────────────────
+// ── Public routes ─────────────────────────────────────────
 
-// GET  /api/campaigns               - all campaigns (supports ?query=)
+// GET  /api/campaigns
 router.get('/', CampaignController.getAll);
 
-// GET  /api/campaigns/featured      - featured campaigns
+// GET  /api/campaigns/featured
 router.get('/featured', CampaignController.getFeatured);
 
-// POST /api/campaigns/get-by-code   - single campaign by code
+// POST /api/campaigns/get-by-code
 router.post('/get-by-code', CampaignController.getByCode);
 
-// GET  /api/campaigns/get-by-code/:id - campaigns by category id
+// GET /api/campaigns/get-by-code/:id
 router.get('/get-by-code/:id', CampaignController.getByCategory);
 
-// POST /api/campaigns/donate        - initiate donation
+// POST /api/campaigns/donate
 router.post('/donate', DonationController.donate);
 
-// ── Authenticated routes ───────────────────────────────────────────────────────
 
-// GET  /api/campaigns/fetch         - current user's campaigns
-router.get('/fetch', requireAuth, CampaignController.getUserCampaigns);
+// ── Authenticated routes ──────────────────────────────────
 
-// POST /api/campaigns               - create campaign (with image uploads)
-router.post('/', requireAuth, upload.array('images', 10), CampaignController.create);
+// GET current user's campaigns
+router.get('/fetch', authMiddleware(['user','admin']), CampaignController.getUserCampaigns);
 
-// PUT  /api/campaigns/:code         - update campaign
-router.put('/:code', requireAuth, upload.array('images', 10), CampaignController.update);
+// CREATE campaign
+router.post(
+  '/',
+  authMiddleware(['user','admin']),
+  upload.array('images', 10),
+  CampaignController.create
+);
 
-// PATCH /api/campaigns/:code        - partial update
-router.patch('/:code', requireAuth, upload.array('images', 10), CampaignController.update);
+// UPDATE campaign
+router.put(
+  '/:code',
+  authMiddleware(['user','admin']),
+  upload.array('images', 10),
+  CampaignController.update
+);
+
+// PARTIAL UPDATE
+router.patch(
+  '/:code',
+  authMiddleware(['user','admin']),
+  upload.array('images', 10),
+  CampaignController.update
+);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 const express        = require('express');
 const router         = express.Router();
 const AuthController = require('../controllers/authController');
-const { requireAuth } = require('../middleware/auth');
+const authMiddleware  = require('../middleware/auth');
 
 // POST /api/signup
 router.post('/register-user', AuthController.signup);
@@ -22,6 +22,6 @@ router.post('/reset-password', AuthController.sendResetOtp);
 router.post('/reset-password-confirm', AuthController.resetPassword);
 
 // GET /api/me  (get logged-in user profile)
-router.get('/me', requireAuth, AuthController.getMe);
+router.get('/me', authMiddleware(['admin']), AuthController.getMe);
 
 module.exports = router;
