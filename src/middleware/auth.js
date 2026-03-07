@@ -15,8 +15,6 @@ function authMiddleware(allowedRoles) {
 
     const token = authHeader.split(' ')[1];
 
-  
-
     try {
 
       // Verify token
@@ -26,18 +24,17 @@ function authMiddleware(allowedRoles) {
       req.user = payload;
 
       // 🔍 DEBUG LOGS
-   
-
-      
-
-  
+      console.log('🔑 Token payload:', payload);
+      console.log('👤 User role from token:', payload.role);
+      console.log('✅ Allowed roles:', allowedRoles);
 
       // Role check
       if (allowedRoles && !allowedRoles.includes(payload.role)) {
-        console.log("⛔ ROLE MISMATCH");
+        console.log(`⛔ ROLE MISMATCH — token has "${payload.role}" but route requires one of: [${allowedRoles.join(', ')}]`);
         return res.status(403).json({ error: 'Forbidden: insufficient role' });
       }
 
+      console.log('✅ Role check passed — proceeding to controller');
       next();
 
     } catch (err) {

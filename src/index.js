@@ -10,10 +10,6 @@ const { connectDB } = require('./db');
 
 // Routes
 const authRoutes       = require('./routes/authRoutes');
-const campaignRoutes   = require('./routes/campaignRoutes');
-const categoryRoutes   = require('./routes/categoryRoutes');
-const withdrawalRoutes = require('./routes/withdrawalRoutes');
-const paymentRoutes    = require('./routes/paymentRoutes');
 const validationRoutes = require("./routes/validationRoutes");
 const merchantsRoute   = require('./routes/merchantsRoutes');
 const apiLimiter       = require('./middleware/rateLimiter');
@@ -28,6 +24,7 @@ const organizationTypeRoutes = require('./routes/organizationTypeRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const accountRoutes = require('./routes/accountRoutes');
 const organizationApiKeyRoutes = require('./routes/organizationApiKeyRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 
 
@@ -64,10 +61,6 @@ app.get('/hello', (req, res) => res.status(200).json({ message: 'Welcome to my B
 
 // ── Routes ───────────────────────────────────────────────────
 app.use('/api', authRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/campaign-categories', categoryRoutes);
-app.use('/api/withdrawals', withdrawalRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use("/api/validator", validationRoutes);
 app.use('/api/merchants', merchantsRoute);
 app.use('/api/organizations', organizationRoutes)
@@ -78,6 +71,7 @@ app.use('/api/organization-types', organizationTypeRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/api-keys', organizationApiKeyRoutes);
+app.use('/api/users', userRoutes);
 
 app.post("/api/users", apiLimiter, validateUser, async (req, res) => {
   try {

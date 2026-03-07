@@ -27,7 +27,7 @@ const loginSchema = Joi.object({
 router.post('/register-user', validateBody(userSchema), AuthController.signup);
 
 // POST /api/login
-router.post('/login', validateBody(loginSchema), AuthController.login);
+router.post('/login-admin', validateBody(loginSchema), AuthController.login);
 
 // POST /api/otp/generate        → send OTP via email or whatsapp (step 2)
 router.post('/generate-otp', AuthController.generateOtp);
@@ -43,5 +43,9 @@ router.post('/reset-password-confirm', AuthController.resetPassword);
 
 // GET /api/me  (get logged-in user profile)
 router.get('/me', authMiddleware(['admin']), AuthController.getMe);
+
+
+// GET /api/login-organization
+router.post('/login-organizations', AuthController.loginUser);
 
 module.exports = router;
