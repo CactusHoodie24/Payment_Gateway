@@ -3,6 +3,8 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { Resend } = require('resend');
 const AdminModel = require('../models/Admin');
+const OtpModel   = require('../models/OtpModel');
+const UserModel = require('../models/User');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM   = 'Malipo Gateway Malawi <onboarding@resend.dev>';
@@ -86,18 +88,43 @@ const AuthService = {
     return { status: 200, message: 'OTP sent to your email address.' };
   },
 
+  async sendUserOtp({ email, code }) {
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      throw { status: 404, message: 'User not found.' };
+    }
+
+    await dispatchOtpEmail(email, code);
+
+    return { status: 200, message: 'OTP sent to your email address.' };
+  },
+
   // POST /api/auth/otp/verify
-  async verifyOtp({ email, otp }) {
+ async verifyOtp({ email, otp }) {
     const admin = await AdminModel.findOne({ email });
     if (!admin) {
       throw { status: 404, message: 'User not found.' };
     }
 
-    if (!admin.otp || admin.otp !== otp) {
-      throw { status: 400, message: 'Invalid or expired OTP.' };
+    // Find the OTP in the otps table by code and handle (email)
+    const otpRecord = await OtpModel.findOne({ code: otp, handle: email });
+
+    if (!otpRecord) {
+      throw { status: 400, message: 'Invalid OTP.' };
     }
 
-    // Mark verified and clear OTP
+    if (otpRecord.status === 'USED') {
+      throw { status: 409, message: 'OTP has already been used.' };
+    }
+
+    if (otpRecord.status === 'EXPIRED') {
+      throw { status: 410, message: 'OTP has expired.' };
+    }
+
+    // Mark OTP as used
+    await OtpModel.updateStatus(otpRecord.id, 'USED');
+
+    // Mark admin as verified
     const verified = await AdminModel.verify(admin.id);
 
     const token = generateToken(verified);
@@ -117,52 +144,47 @@ const AuthService = {
 
   // POST /api/auth/login
   async login({ email, password }) {
-    const admin = await AdminModel.findOne({ email });
-    if (!admin) {
-      throw { status: 401, message: 'Invalid email or password.' };
+
+  const admin = await AdminModel.findOne({ email });
+  if (!admin) {
+    throw { status: 401, message: 'Invalid email or password.' };
+  }
+
+  const match = await bcrypt.compare(password, admin.password);
+  if (!match) {
+    throw { status: 401, message: 'Invalid email or password.' };
+  }
+
+  // Generate unique 6-digit code
+  let code;
+  let exists;
+  do {
+    code   = Math.floor(100000 + Math.random() * 900000).toString();
+    exists = await OtpModel.findOne({ code });
+  } while (exists);
+
+  // Save OTP to otps table
+  await OtpModel.create({
+    channel:  'EMAIL',
+    code,
+    handle:   email,
+    metadata: { purpose: 'admin_login', admin_id: admin.id }
+  });
+
+  await dispatchOtpEmail(email, code);
+
+  return {
+    status:  200,
+    message: 'OTP sent to your email for verification.',
+    data: {
+      id:           admin.id,
+      name:         admin.name,
+      email:        admin.email,
+      phone_number: admin.phone_number,
+      role:         admin.role
     }
-
-    const match = await bcrypt.compare(password, admin.password);
-    if (!match) {
-      throw { status: 401, message: 'Invalid email or password.' };
-    }
-
-    // Verified — issue token immediately
-    if (admin.verified) {
-      const token = generateToken(admin);
-      return {
-        status:  200,
-        message: 'Login successful.',
-        data: {
-          id:           admin.id,
-          name:         admin.name,
-          email:        admin.email,
-          phone_number: admin.phone_number,
-          role:         admin.role,
-          verified:     !!admin.verified,
-        },
-        token,
-      };
-    }
-
-    // Not verified — send OTP and prompt verification
-    const otp = generateOtp();
-    await AdminModel.setOtp(admin.id, otp);
-    await dispatchOtpEmail(email, otp);
-
-    return {
-      status:  200,
-      message: 'We have sent an OTP to your email. Please verify.',
-      data: {
-        id:           admin.id,
-        name:         admin.name,
-        email:        admin.email,
-        phone_number: admin.phone_number,
-        role:         admin.role,
-        verified:     false,
-      },
-    };
-  },
+  };
+},
 
   // POST /api/auth/reset-password
   async sendResetOtp({ email }) {

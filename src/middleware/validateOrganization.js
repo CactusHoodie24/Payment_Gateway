@@ -61,7 +61,13 @@ const organizationSchema = Joi.object({
     'number.integer':  'organization_type_id must be an integer.',
     'number.positive': 'organization_type_id must be a positive number.',
     'any.required':    'organization_type_id is required.'
-  })
+  }),
+
+  password: Joi.string().min(6).max(255).required().messages({
+  'string.empty': 'password is required.',
+  'string.min':   'password must be at least 6 characters.',
+  'any.required': 'password is required.'
+})
 });
 
 function validateOrganization(req, res, next) {

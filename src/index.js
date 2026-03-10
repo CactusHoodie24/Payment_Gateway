@@ -25,6 +25,12 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const accountRoutes = require('./routes/accountRoutes');
 const organizationApiKeyRoutes = require('./routes/organizationApiKeyRoutes');
 const userRoutes = require('./routes/userRoutes');
+const otpRoutes = require('./routes/otpRoutes');
+const accountEntryRoutes = require('./routes/accountEntryRoutes');
+const cookieParser = require('cookie-parser');
+
+
+
 
 
 
@@ -42,6 +48,7 @@ const BACKEND_URL = 'http://localhost:4000';
 
 // ── Middleware ───────────────────────────────────────────────
 app.use(cors());
+app.use(cookieParser());
 
 // ✅ Parse body BEFORE validateUser so req.body is populated
 app.use('/api', express.json());
@@ -72,38 +79,9 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/api-keys', organizationApiKeyRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/otps', otpRoutes);
+app.use('/api/account-entries', accountEntryRoutes);
 
-app.post("/api/users", apiLimiter, validateUser, async (req, res) => {
-  try {
-
-    console.log("Proxy received request");
-    console.log(req.body);
-
-    const response = await axios.post(
-      "http://localhost:4000/users",
-      req.body,
-      {
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    console.log("Response from backend:", response.data);
-
-    res.status(response.status).json(response.data);
-
-  } catch (error) {
-
-    console.error("Proxy error:", error.message);
-
-    if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
-    }
-
-    res.status(500).json({ message: "Proxy server error" });
-  }
-});
 
 // ── Health check ───────────────────────────────────────────
 app.get('/health', (req, res) => {

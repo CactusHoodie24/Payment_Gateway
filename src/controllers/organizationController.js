@@ -9,47 +9,31 @@ async create(req, res) {
     try {
       console.log(req.body);
 
-      const targetUrl = 'http://localhost:4000/users';
+      const { password, ...organizationData } = req.body;
 
-      const response = await axios.post(targetUrl, req.body, {
-        headers: { 'Content-Type': 'application/json' }
+      // Create organization in MySQL
+      const organization = await organizationService.createOrganization(organizationData);
+
+      // Create temp user using contact email and client-provided password
+      const user = await userService.createUser({
+        email:    req.body.contact_email,
+        password: password
       });
 
-      // ✅ Only save to MySQL if backend acknowledged with 201
-      if (response.status === 201) {
-
-        // Temporary user — email from req.body, random plain text password
-        const tempPassword = Math.random().toString(36).slice(-8);
-
-        const user = await userService.createUser({
-          email:    req.body.contact_email,
-          password: tempPassword
-        });
-
-        return res.status(201).json({
-          status:  'success',
-          message: 'User created successfully.',
-          data: {
+      return res.status(201).json({
+        status:  'success',
+        message: 'Organization created successfully.',
+        data: {
+          organization,
+          user: {
             ...user,
-            password: tempPassword  // return plain text temp password to client
+            password
           }
-        });
-      }
-
-      return res.status(response.status).json({
-        status:  'error',
-        message: 'Backend did not confirm creation.',
-        data:    response.data
+        }
       });
 
     } catch (error) {
-      if (error.response) {
-        return res.status(error.response.status).json({
-          status:  'error',
-          message: error.response.data?.message || 'Upstream service error.'
-        });
-      }
-      return res.status(500).json({
+      return res.status(error.status || 500).json({
         status:  'error',
         message: error.message || 'Internal server error.'
       });

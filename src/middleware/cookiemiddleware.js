@@ -1,27 +1,17 @@
-// src/middleware/authMiddleware.js
+// src/middleware/cookieAuthMiddleware.js
 const jwt = require('jsonwebtoken');
 
 /**
- * Middleware factory for role-based access
- * Supports:
- *  - Admin: Bearer token in Authorization header
- *  - Organization: JWT in httpOnly cookie (access_token)
+ * Middleware factory for cookie-based role access
  * @param {Array} allowedRoles - roles allowed to access this route
  */
-function authMiddleware(allowedRoles) {
+function cookieAuthMiddleware(allowedRoles) {
   return (req, res, next) => {
 
-    // Try Authorization header first (admin)
-    const authHeader = req.headers['authorization'];
-    const headerToken = authHeader ? authHeader.split(' ')[1] : null;
+    const token = req.cookies.access_token;
 
-    // Fall back to cookie (organization)
-    const cookieToken = req.cookies?.access_token;
-
-    const token = headerToken || cookieToken;
-
-    console.log('🔐 authMiddleware hit');
-    console.log('📨 Source:', headerToken ? 'Authorization header' : cookieToken ? 'Cookie' : 'NONE');
+    console.log('🍪 cookieAuthMiddleware hit');
+    console.log('🔍 Cookie token:', token ? `${token.slice(0, 20)}...` : 'NOT PROVIDED');
 
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
@@ -56,4 +46,4 @@ function authMiddleware(allowedRoles) {
   };
 }
 
-module.exports = authMiddleware;
+module.exports = cookieAuthMiddleware;

@@ -2,11 +2,12 @@
 const express = require('express');
 const router  = express.Router();
 const organizationTypeController = require('../controllers/organizationTypeController');
+const authMiddleware  = require('../middleware/auth');
 
-router.post('/',      organizationTypeController.create);
-router.get('/',       organizationTypeController.getAll);
-router.get('/:id',    organizationTypeController.getById);
-router.put('/:id',    organizationTypeController.update);
-router.delete('/:id', organizationTypeController.remove);
+router.post('/',   authMiddleware(['admin']),   organizationTypeController.create);
+router.get('/',    authMiddleware(['admin']),   organizationTypeController.getAll);
+router.get('/:id', authMiddleware(['admin']),   organizationTypeController.getById);
+router.put('/:id',  authMiddleware(['admin']),  organizationTypeController.update);
+router.delete('/:id',authMiddleware(['admin']), organizationTypeController.remove);
 
 module.exports = router;

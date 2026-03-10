@@ -49,43 +49,40 @@ const userController = {
 
   async activate(req, res) {
     try {
-      const { email, password, password_confirmation } = req.body;
+      const { email, temp_password, password, password_confirmation } = req.body;
 
       if (!email) {
-        return res.status(400).json({
-          status:  'error',
-          message: 'email is required.'
-        });
+        return res.status(400).json({ status: 'error', message: 'email is required.' });
+      }
+
+      if (!temp_password) {
+        return res.status(400).json({ status: 'error', message: 'temp_password is required.' });
       }
 
       if (!password || !password_confirmation) {
-        return res.status(400).json({
-          status:  'error',
-          message: 'password and password_confirmation are required.'
-        });
+        return res.status(400).json({ status: 'error', message: 'password and password_confirmation are required.' });
       }
 
       if (password !== password_confirmation) {
-        return res.status(400).json({
-          status:  'error',
-          message: 'Passwords do not match.'
-        });
+        return res.status(400).json({ status: 'error', message: 'Passwords do not match.' });
       }
 
-      // Check email exists before activating
-      const existing = await userService.getUserByEmail(email);
-      if (!existing) {
-        return res.status(404).json({
-          status:  'error',
-          message: 'No account found with this email.'
-        });
+      // Find user by email
+      const user = await userService.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ status: 'error', message: 'No account found with this email.' });
       }
 
-      const user = await userService.activateUser(existing.id, password);
+      // Verify temp_password matches what was stored
+      if (user.temp_password !== temp_password) {
+        return res.status(401).json({ status: 'error', message: 'Invalid temporary password.' });
+      }
+
+      const activated = await userService.activateUser(user.id, password);
       return res.status(200).json({
         status:  'success',
-        message: 'User activated successfully.',
-        data:    user
+        message: 'Account activated successfully.',
+        data:    activated
       });
 
     } catch (error) {

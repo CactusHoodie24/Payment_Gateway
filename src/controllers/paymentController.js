@@ -5,6 +5,7 @@ const axios = require("axios");
 const paymentController = {
   async paymentInitiate(req, res) {
     try {
+      const apiKey = req.apiKey;
       console.log("💳 Payment initiation request received");
       console.log("📦 Request body:", req.body);
 
@@ -14,6 +15,7 @@ const paymentController = {
         {
           headers: {
             "Content-Type": "application/json",
+            "x-api-key": apiKey
           },
         },
       );
