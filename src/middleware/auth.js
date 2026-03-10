@@ -15,6 +15,8 @@ function authMiddleware(allowedRoles) {
     const authHeader = req.headers['authorization'];
     const headerToken = authHeader ? authHeader.split(' ')[1] : null;
 
+    console.log('🍪 All cookies:', req.cookies);
+
     // Fall back to cookie (organization)
     const cookieToken = req.cookies?.access_token;
 

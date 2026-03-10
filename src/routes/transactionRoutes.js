@@ -9,7 +9,7 @@ const validateApiKey = require('../middleware/validateApiKey');
 const apiLimiter = require('../middleware/rateLimiter')
 
 router.post('/',  authMiddleware(['admin']),          transactionController.create);
-router.get('/',    authMiddleware(['admin']),         transactionController.getAll);
+router.get('/',    authMiddleware(['admin', 'organization']),         transactionController.getAll);
 router.get('/:id',  authMiddleware(['admin']),        transactionController.getById);
 router.put('/:id',  authMiddleware(['admin']),        transactionController.update);
 router.patch('/:id/status', authMiddleware(['admin']), transactionController.updateStatus);
