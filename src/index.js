@@ -34,25 +34,14 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://192.168.0.174:3000',
   'http://192.168.10.208:3000',
+  'http://192.168.10.219:3000',
   /\.ngrok-free\.app$/,   // ← allow all ngrok URLs
   /\.ngrok\.io$/
 ];
 
+
 app.use(cors({
-  origin: function(origin, callback) {
-    console.log('Request origin:', origin);
-
-    // Allow requests with no origin (Postman, server-to-server)
-    if (!origin) return callback(null, true);
-
-    const allowed = allowedOrigins.some(o =>
-      typeof o === 'string' ? o === origin : o.test(origin)
-    );
-
-    if (allowed) return callback(null, true);
-
-    return callback(new Error('Not allowed by CORS'));
-  },
+ origin: true,
   credentials: true
 }));
 

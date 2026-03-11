@@ -1,32 +1,40 @@
 // config/database.js
 require('dotenv').config();
-const mysql = require('mysql2/promise'); // Using promise-based mysql2
+const mysql = require('mysql2/promise');
 
-let connection;
+let pool;
 
 async function connectDB() {
   try {
-    connection = await mysql.createConnection({
-      host: process.env.DB_HOST,       // e.g., 'localhost'
-      user: process.env.DB_USER,       // e.g., 'root'
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT || 3306
+    pool = mysql.createPool({
+      host:               process.env.DB_HOST,
+      user:               process.env.DB_USER,
+      password:           process.env.DB_PASSWORD,
+      database:           process.env.DB_NAME,
+      port:               process.env.DB_PORT || 3306,
+      waitForConnections: true,
+      connectionLimit:    10,
+      queueLimit:         0,
+      enableKeepAlive:    true,
+      keepAliveInitialDelay: 0
     });
 
-    console.log('MySQL connected');
-    return connection;
+    // Test the connection
+    const conn = await pool.getConnection();
+    console.log('✅ MySQL connected successfully');
+    conn.release();
+
   } catch (err) {
-    console.error('MySQL connection failed:', err);
+    console.error('❌ MySQL connection failed:', err.message);
     process.exit(1);
   }
 }
 
-// Optional: get the connection elsewhere in your app
 function getConnection() {
-  if (!connection) {
+  if (!pool) {
     throw new Error('Database not connected. Call connectDB first.');
   }
-  return connection;
+  return pool;
 }
 
 module.exports = { connectDB, getConnection };
