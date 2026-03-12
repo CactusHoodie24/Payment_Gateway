@@ -26,6 +26,9 @@ const organizationApiKeyRoutes = require('./routes/organizationApiKeyRoutes');
 const userRoutes             = require('./routes/userRoutes');
 const otpRoutes              = require('./routes/otpRoutes');
 const accountEntryRoutes     = require('./routes/accountEntryRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
+const webhookEventRoutes = require('./routes/webhookEventRoutes');
+
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -71,6 +74,9 @@ app.use('/api/api-keys', organizationApiKeyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/otps', otpRoutes);
 app.use('/api/account-entries', accountEntryRoutes);
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/webhook-events', webhookEventRoutes);
+
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', (req, res) => {

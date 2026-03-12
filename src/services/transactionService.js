@@ -1,14 +1,15 @@
 // src/services/transactionService.js
 const TransactionModel = require('../models/Transaction');
-const { v4: uuidv4 } = require('uuid');
+const webhookService   = require('./webhookService');
+const { v4: uuidv4 }   = require('uuid');
 
-const VALID_STATUSES   = ['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REVERSED'];
-const VALID_CHANNELS   = ['AIRTEL', 'TNM'];
+const VALID_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REVERSED'];
+const VALID_CHANNELS = ['AIRTEL', 'TNM'];
 
 const transactionService = {
 
   async createTransaction(data) {
-    const { merchant_reference, payment_channel, transaction_amount, transaction_fee, transaction_type_id } = data;
+    const { merchant_reference, payment_channel, transaction_amount, transaction_fee, transaction_type_id, organization_id } = data;
 
     if (!merchant_reference) throw { status: 400, message: 'merchant_reference is required.' };
     if (!payment_channel || !VALID_CHANNELS.includes(payment_channel)) {
@@ -31,7 +32,23 @@ const transactionService = {
     // Auto-generate a unique transaction_id
     const transaction_id = `TXN-${Date.now()}-${uuidv4().split('-')[0].toUpperCase()}`;
 
-    return await TransactionModel.create({ ...data, transaction_id });
+    const transaction = await TransactionModel.create({ ...data, transaction_id });
+
+    // 🔔 Dispatch webhook
+    if (organization_id) {
+      await webhookService.dispatch(organization_id, 'transaction.created', {
+        transaction_id:     transaction.transaction_id,
+        merchant_reference: transaction.merchant_reference,
+        payment_channel:    transaction.payment_channel,
+        phone_number:       transaction.phone_number,
+        transaction_amount: transaction.transaction_amount,
+        transaction_fee:    transaction.transaction_fee,
+        status:             transaction.status,
+        transaction_type:   transaction.transaction_type
+      });
+    }
+
+    return transaction;
   },
 
   async getTransactionById(id) {
@@ -52,7 +69,7 @@ const transactionService = {
     return await TransactionModel.find(filters);
   },
 
-  async updateTransactionStatus(id, status) {
+  async updateTransactionStatus(id, status, organization_id = null) {
     const existing = await TransactionModel.findById(id);
     if (!existing) {
       throw { status: 404, message: 'Transaction not found.' };
@@ -60,11 +77,33 @@ const transactionService = {
     if (!VALID_STATUSES.includes(status)) {
       throw { status: 400, message: `status must be one of: ${VALID_STATUSES.join(', ')}.` };
     }
-    // Prevent updating a already finalized transaction
+    // Prevent updating an already finalized transaction
     if (['COMPLETED', 'REVERSED', 'CANCELLED'].includes(existing.status)) {
       throw { status: 409, message: `Cannot update a transaction with status "${existing.status}".` };
     }
-    return await TransactionModel.updateStatus(id, status);
+
+    const updated = await TransactionModel.updateStatus(id, status);
+
+    // 🔔 Dispatch webhook based on new status
+    if (organization_id) {
+      const eventMap = {
+        COMPLETED: 'transaction.completed',
+        FAILED:    'transaction.failed',
+      };
+      const event = eventMap[status];
+      if (event) {
+        await webhookService.dispatch(organization_id, event, {
+          transaction_id:     updated.transaction_id,
+          merchant_reference: updated.merchant_reference,
+          payment_channel:    updated.payment_channel,
+          transaction_amount: updated.transaction_amount,
+          status:             updated.status,
+          transaction_type:   updated.transaction_type
+        });
+      }
+    }
+
+    return updated;
   },
 
   async updateTransaction(id, data) {
