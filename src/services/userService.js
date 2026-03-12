@@ -1,6 +1,9 @@
 // src/services/userService.js
 const UserModel = require('../models/User');
 const bcrypt    = require('bcryptjs');
+const OrganizationModel   = require('../models/OrganizationModel');
+const organizationService = require('./organizationService');
+
 
 const userService = {
 
@@ -34,7 +37,7 @@ const userService = {
   },
 
   // Called when user sets their permanent password
-  async activateUser(id, newPassword) {
+ async activateUser(id, newPassword) {
     const user = await UserModel.findById(id);
     if (!user) throw { status: 404, message: 'User not found.' };
 
@@ -44,6 +47,12 @@ const userService = {
 
     const hashed  = await bcrypt.hash(newPassword, 12);
     const updated = await UserModel.activate(id, hashed);
+
+    // Find and activate the linked organization by matching email
+    const organization = await OrganizationModel.findOne({ contact_email: user.email });
+    if (organization) {
+      await organizationService.updateOrganizationStatus(organization.id, 'ACTIVE');
+    }
 
     // Strip sensitive fields from response
     const { password: _, temp_password: __, ...safeUser } = updated;
