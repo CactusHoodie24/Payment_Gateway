@@ -34,27 +34,35 @@ const accountController = {
     }
   },
 
-  async getAll(req, res) {
-    try {
-      const filters = {};
-      if (req.query.account_status)  filters.account_status  = req.query.account_status;
-      if (req.query.account_type)    filters.account_type    = req.query.account_type;
-      if (req.query.organization_id) filters.organization_id = req.query.organization_id;
-      if (req.query.currency)        filters.currency        = req.query.currency;
+ async getAll(req, res) {
+  try {
+    const filters = {};
 
-      const accounts = await accountService.getAllAccounts(filters);
-      return res.status(200).json({
-        status: 'success',
-        count:  accounts.length,
-        data:   accounts
-      });
-    } catch (error) {
-      return res.status(error.status || 500).json({
-        status:  'error',
-        message: error.message || 'Internal server error.'
-      });
+    // Organization can only see their own accounts
+    if (req.user.role === 'organization') {
+      filters.organization_id = req.user.organization_id;
+    } else {
+      // Admin can filter by org or see all
+      if (req.query.organization_id) filters.organization_id = req.query.organization_id;
     }
-  },
+
+    if (req.query.account_status) filters.account_status = req.query.account_status;
+    if (req.query.account_type)   filters.account_type   = req.query.account_type;
+    if (req.query.currency)       filters.currency       = req.query.currency;
+
+    const accounts = await accountService.getAllAccounts(filters);
+    return res.status(200).json({
+      status: 'success',
+      count:  accounts.length,
+      data:   accounts
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      status:  'error',
+      message: error.message || 'Internal server error.'
+    });
+  }
+},
 
   async update(req, res) {
     try {

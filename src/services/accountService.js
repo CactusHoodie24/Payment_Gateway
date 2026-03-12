@@ -36,8 +36,47 @@ const accountService = {
     if (filters.account_type && !VALID_ACCOUNT_TYPES.includes(filters.account_type)) {
       throw { status: 400, message: `account_type must be one of: ${VALID_ACCOUNT_TYPES.join(', ')}.` };
     }
+
+    // If organization_id is provided verify it exists
+    if (filters.organization_id) {
+      const org = await OrganizationModel.findById(filters.organization_id);
+      if (!org) throw { status: 404, message: 'Organization not found.' };
+    }
+
     return await AccountModel.find(filters);
   },
+
+  async getAll(req, res) {
+  try {
+    const filters = {};
+
+    // Organization can only see their own accounts
+    if (req.user.role === 'organization') {
+      filters.organization_id = req.user.organization_id;
+    } else {
+      // Admin can filter by org or see all
+      if (req.query.organization_id) filters.organization_id = req.query.organization_id;
+    }
+
+    if (req.query.account_status) filters.account_status = req.query.account_status;
+    if (req.query.account_type)   filters.account_type   = req.query.account_type;
+    if (req.query.currency)       filters.currency       = req.query.currency;
+
+    const accounts = await accountService.getAllAccounts(filters);
+    return res.status(200).json({
+      status: 'success',
+      count:  accounts.length,
+      data:   accounts
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      status:  'error',
+      message: error.message || 'Internal server error.'
+    });
+  }
+},
+
+
 
   async updateAccount(id, data) {
     const existing = await AccountModel.findById(id);
