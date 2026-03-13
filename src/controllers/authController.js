@@ -5,6 +5,7 @@ const bcrypt      = require('bcryptjs');
 const jwt         = require('jsonwebtoken');
 const OtpModel    = require('../models/OtpModel');
 const OrganizationModel = require('../models/OrganizationModel');
+const { logAudit } = require('../middleware/auditLogger');
 
 // ── Cookie config helper ──────────────────────────────────────
 function getCookieOptions(maxAge) {
@@ -48,6 +49,15 @@ const AuthController = {
     try {
       const result = await AuthService.verifyOtp(req.body);
       console.log('Verifying otp');
+
+      // Log successful admin login after OTP verification
+      if (result.data?.id) {
+        logAudit(
+          { user: { id: result.data.id, email: result.data.email }, headers: req.headers, connection: req.connection, ip: req.ip },
+          { action: 'LOGIN', resourceType: 'admin', resourceId: result.data.id, description: `${result.data.email} logged in (admin)` }
+        );
+      }
+
       res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -203,6 +213,14 @@ const AuthController = {
 
       console.log('🍪 Access token set for:',  user.email);
       console.log('🍪 Refresh token set for:', user.email);
+
+      // Log successful organization user login
+      logAudit(req, {
+        action: 'LOGIN',
+        resourceType: 'user',
+        resourceId: user.id,
+        description: `${user.email} logged in (organization)`
+      });
 
       return res.status(200).json({
         status:  'success',

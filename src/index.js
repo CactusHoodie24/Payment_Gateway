@@ -28,6 +28,7 @@ const otpRoutes              = require('./routes/otpRoutes');
 const accountEntryRoutes     = require('./routes/accountEntryRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const webhookEventRoutes = require('./routes/webhookEventRoutes');
+const auditLogRoutes     = require('./routes/auditLogRoutes');
 
 
 const app  = express();
@@ -76,6 +77,7 @@ app.use('/api/otps', otpRoutes);
 app.use('/api/account-entries', accountEntryRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/webhook-events', webhookEventRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 
 // ── Health check ─────────────────────────────────────────────

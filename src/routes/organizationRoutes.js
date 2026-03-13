@@ -5,12 +5,13 @@ const organizationController = require('../controllers/organizationController');
 const validateOrganization = require('../middleware/validateOrganization');
 const authMiddleware  = require('../middleware/auth');
 const cookieAuthMiddleware = require('../middleware/cookiemiddleware');
+const auditLogger = require('../middleware/auditLogger');
 
-router.post('/',  authMiddleware(['admin']), validateOrganization,                     organizationController.create);
+router.post('/',  authMiddleware(['admin']), auditLogger, validateOrganization,         organizationController.create);
 router.get('/',       authMiddleware(['admin']),                  organizationController.getAll);
 router.get('/:id',      authMiddleware(['admin', 'organization']),     organizationController.getById);
-router.put('/:id',        authMiddleware(['admin', 'organization']),            organizationController.update);
-router.patch('/:id/status',  authMiddleware(['admin', 'organization']),            organizationController.updateStatus);
-router.delete('/:id',        authMiddleware(['admin', 'organization']),            organizationController.remove);
+router.put('/:id',        authMiddleware(['admin', 'organization']), auditLogger,  organizationController.update);
+router.patch('/:id/status',  authMiddleware(['admin', 'organization']), auditLogger, organizationController.updateStatus);
+router.delete('/:id',        authMiddleware(['admin', 'organization']), auditLogger, organizationController.remove);
 
 module.exports = router;

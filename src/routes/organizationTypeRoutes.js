@@ -3,11 +3,12 @@ const express = require('express');
 const router  = express.Router();
 const organizationTypeController = require('../controllers/organizationTypeController');
 const authMiddleware  = require('../middleware/auth');
+const auditLogger = require('../middleware/auditLogger');
 
-router.post('/',   authMiddleware(['admin']),   organizationTypeController.create);
+router.post('/',   authMiddleware(['admin']), auditLogger,   organizationTypeController.create);
 router.get('/',    authMiddleware(['admin']),   organizationTypeController.getAll);
 router.get('/:id', authMiddleware(['admin']),   organizationTypeController.getById);
-router.put('/:id',  authMiddleware(['admin']),  organizationTypeController.update);
-router.delete('/:id',authMiddleware(['admin']), organizationTypeController.remove);
+router.put('/:id',  authMiddleware(['admin']), auditLogger,  organizationTypeController.update);
+router.delete('/:id',authMiddleware(['admin']), auditLogger, organizationTypeController.remove);
 
 module.exports = router;
