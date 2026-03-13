@@ -1,5 +1,6 @@
 // src/controllers/AuthController.js
 const AuthService = require('../services/authService');
+const auditService = require('../services/auditService');
 const UserModel   = require('../models/User');
 const bcrypt      = require('bcryptjs');
 const jwt         = require('jsonwebtoken');
@@ -50,12 +51,18 @@ const AuthController = {
       const result = await AuthService.verifyOtp(req.body);
       console.log('Verifying otp');
 
-      // Log successful admin login after OTP verification
-      if (result.data?.id) {
-        logAudit(
-          { user: { id: result.data.id, email: result.data.email }, headers: req.headers, connection: req.connection, ip: req.ip },
-          { action: 'LOGIN', resourceType: 'admin', resourceId: result.data.id, description: `${result.data.email} logged in (admin)` }
-        );
+      // Log successful admin login after OTP verification (fire-and-forget)
+      if (result.data?.id && result.data?.email) {
+        auditService.log({
+          userId: result.data.id,
+          userName: result.data.email,
+          action: 'LOGIN',
+          resourceType: 'admin',
+          resourceId: result.data.id,
+          description: `${result.data.email} logged in (admin)`,
+          ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress || req.ip,
+          userAgent: req.headers['user-agent'] || null
+        });
       }
 
       res.status(200).json(result);
