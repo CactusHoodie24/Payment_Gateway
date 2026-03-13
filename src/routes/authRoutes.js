@@ -3,6 +3,7 @@ const Joi = require('joi');
 const router         = express.Router();
 const AuthController = require('../controllers/authController');
 const authMiddleware  = require('../middleware/auth');
+const auditLogger    = require('../middleware/auditLogger');
 const validateBody = require('../middleware/userValidation');
 
 // Define your schema
@@ -24,32 +25,32 @@ const loginSchema = Joi.object({
 });
 
 // POST /api/signup
-router.post('/register-user', validateBody(userSchema), AuthController.signup);
+router.post('/register-user', validateBody(userSchema), auditLogger, AuthController.signup);
 
 // POST /api/login
-router.post('/login-admin', validateBody(loginSchema), AuthController.login);
+router.post('/login-admin', validateBody(loginSchema), auditLogger, AuthController.login);
 
 // POST /api/otp/generate        → send OTP via email or whatsapp (step 2)
-router.post('/generate-otp', AuthController.generateOtp);
+router.post('/generate-otp', auditLogger, AuthController.generateOtp);
 
 // POST /api/otp  (verify email OTP after signup)
-router.post('/verify-otp', AuthController.verifyOtp);
+router.post('/verify-otp', auditLogger, AuthController.verifyOtp);
 
 // POST /api/reset-password  (send OTP to email)
-router.post('/reset-password', AuthController.sendResetOtp);
+router.post('/reset-password', auditLogger, AuthController.sendResetOtp);
 
 // POST /api/reset-password-confirm  (verify OTP + set new password)
-router.post('/reset-password-confirm', AuthController.resetPassword);
+router.post('/reset-password-confirm', auditLogger, AuthController.resetPassword);
 
 // GET /api/me  (get logged-in user profile)
 router.get('/me', authMiddleware(['admin']), AuthController.getMe);
 
 
 // GET /api/login-organization
-router.post('/auth/token', AuthController.loginUser);
+router.post('/auth/token', auditLogger, AuthController.loginUser);
 
-router.post('/auth/verifyUser-otp', AuthController.verifyLoginOtp)
+router.post('/auth/verifyUser-otp', auditLogger, AuthController.verifyLoginOtp)
 
-router.post('/auth/refresh', AuthController.refreshToken);
+router.post('/auth/refresh', auditLogger, AuthController.refreshToken);
 
 module.exports = router;

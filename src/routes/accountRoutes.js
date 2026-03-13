@@ -11,6 +11,8 @@ router.get('/:id',   authMiddleware(['admin', 'organization']),          account
 router.put('/:id',     authMiddleware(['admin']), auditLogger,        accountController.update);
 router.patch('/:id/status', authMiddleware(['admin']), auditLogger,   accountController.updateStatus);
 router.patch('/:id/balance', authMiddleware(['admin']), auditLogger,  accountController.updateBalance);
-router.delete('/:id',     authMiddleware(['admin']), auditLogger,     accountController.remove);
+router.delete('/:id',     authMiddleware(['admin']), auditLogger, accountController.remove);
 
 module.exports = router;
+
+module.exports = router;uditLogger

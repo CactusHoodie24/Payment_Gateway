@@ -3,10 +3,9 @@ const express = require('express');
 const router = express.Router();
 const merchantsController = require('../controllers/merchantsController');
 const authMiddleware  = require('../middleware/auth');
+const auditLogger     = require('../middleware/auditLogger');
 
-
-
-router.post('/login', merchantsController.loginMerchant)
+router.post('/login', auditLogger, merchantsController.loginMerchant)
 
 // Get all merchants with optional filters
 router.get('/', authMiddleware(['admin']), merchantsController.getMerchants);
@@ -15,12 +14,12 @@ router.get('/', authMiddleware(['admin']), merchantsController.getMerchants);
 router.get('/:id', authMiddleware(['admin']), merchantsController.getMerchant);
 
 // Create a new merchant
-router.post('/', merchantsController.createMerchant);
+router.post('/', auditLogger, merchantsController.createMerchant);
 
 // Update a merchant by ID
-router.post('/update', authMiddleware(['admin']), merchantsController.updateMerchant);
+router.post('/update', authMiddleware(['admin']), auditLogger, merchantsController.updateMerchant);
 
 // Delete a merchant by ID
-router.delete('/:id', authMiddleware(['admin']), merchantsController.deleteMerchant);
+router.delete('/:id', authMiddleware(['admin']), auditLogger, merchantsController.deleteMerchant);
 
 module.exports = router;

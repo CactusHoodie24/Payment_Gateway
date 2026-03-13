@@ -1,21 +1,20 @@
 // src/middleware/auditLogger.js
 const auditService = require('../services/auditService');
-
-// Map HTTP methods to audit actions
-const METHOD_ACTION_MAP = {
-  POST:   'CREATE',
-  PUT:    'UPDATE',
-  PATCH:  'UPDATE',
-  DELETE: 'DELETE'
-};
+const { HTTPMethodToAction, URLPathToResourceType } = require('../enums/AuditActivityEnum');
 
 // Extract resource type from the request path
 // e.g. /api/organizations/123 → 'organization'
 function getResourceType(path) {
   const segments = path.replace(/^\/api\//, '').split('/');
-  const resource = segments[0] || 'unknown';
-  // Normalize plural to singular for readability
-  return resource.replace(/-/g, '_').replace(/s$/, '');
+  const pathSegment = segments[0] || 'unknown';
+  
+  // Check if the path segment exists in our enum mapping
+  if (URLPathToResourceType[pathSegment]) {
+    return URLPathToResourceType[pathSegment];
+  }
+  
+  // Fallback to converting the path segment to lowercase with underscores
+  return pathSegment.toLowerCase().replace(/s$/, '');
 }
 
 // Extract resource ID from params or response
@@ -64,7 +63,7 @@ function auditLogger(req, res, next) {
   const method = req.method.toUpperCase();
 
   // Only audit mutating requests
-  if (!METHOD_ACTION_MAP[method]) {
+  if (!HTTPMethodToAction[method]) {
     return next();
   }
 
@@ -74,7 +73,7 @@ function auditLogger(req, res, next) {
   res.json = function (body) {
     // Only log successful mutations (2xx status codes)
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      const action = METHOD_ACTION_MAP[method];
+      const action = HTTPMethodToAction[method];
       const resourceType = getResourceType(req.originalUrl || req.url);
       const resourceId = getResourceId(req, body);
       const userName = req.user?.email || req.user?.name || null;
