@@ -10,7 +10,7 @@ router.get('/',        authMiddleware(['organization', 'admin']), webhookEventCo
 router.get('/:id',     authMiddleware(['organization', 'admin']), webhookEventController.getById);
 
 // Admin only — manage predefined events
-router.post('/',             authMiddleware(['admin']), webhookEventController.create);
+router.post('/',             authMiddleware(['admin', 'organization']), webhookEventController.create);
 router.patch('/:id/status',  authMiddleware(['admin']), webhookEventController.updateStatus);
 router.delete('/:id',        authMiddleware(['admin']), webhookEventController.remove);
 

@@ -96,15 +96,15 @@ const WebhookModel = {
     }));
   },
 
-  async create({ organization_id, url, secret, events, description = null, status = 'ACTIVE' }) {
-    const db = getConnection();
-    const [result] = await db.query(
-      `INSERT INTO webhooks (organization_id, url, secret, events, description, status, created_at, last_modified_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [organization_id, url, secret, JSON.stringify(events), description, status]
-    );
-    return this.findByIdWithDetails(result.insertId);
-  },
+ async create({ organization_id, url, callback_url, secret, events, description = null, status = 'ACTIVE' }) {
+  const db = getConnection();
+  const [result] = await db.query(
+    `INSERT INTO webhooks (organization_id, url, callback_url, secret, events, description, status, created_at, last_modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    [organization_id, url, callback_url, secret, JSON.stringify(events), description, status]
+  );
+  return this.findByIdWithDetails(result.insertId);
+},
 
   async findByIdAndUpdate(id, fields) {
     const db = getConnection();

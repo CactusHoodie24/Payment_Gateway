@@ -4,6 +4,7 @@ const UserModel   = require('../models/User');
 const bcrypt      = require('bcryptjs');
 const jwt         = require('jsonwebtoken');
 const OtpModel    = require('../models/OtpModel');
+const OrganizationModel = require('../models/OrganizationModel');
 
 // ── Cookie config helper ──────────────────────────────────────
 function getCookieOptions(maxAge) {
@@ -152,7 +153,7 @@ const AuthController = {
     }
   },
 
-  // Step 2 — verify OTP and assign httpOnly cookies
+ // Step 2 — verify OTP and assign httpOnly cookies
   async verifyLoginOtp(req, res) {
     try {
       const { email, otp } = req.body;
@@ -182,10 +183,20 @@ const AuthController = {
 
       const user = await UserModel.findOne({ email });
 
-      const payload = { id: user.id, email: user.email, role: user.role };
+      // Find the organization linked to this user by matching contact_email
+      const organization = await OrganizationModel.findOne({ contact_email: email });
 
-      const accessToken  = jwt.sign(payload, process.env.JWT_SECRET,         { expiresIn: '15m' });
-      const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET,  { expiresIn: '7d' });
+      const payload = {
+        id:              user.id,
+        email:           user.email,
+        role:            user.role,
+        organization_id: organization ? organization.id : null
+      };
+
+      console.log('🏢 Organization found:', organization ? `${organization.name} (id: ${organization.id})` : 'NONE');
+
+      const accessToken  = jwt.sign(payload, process.env.JWT_SECRET,        { expiresIn: '15m' });
+      const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
       res.cookie('access_token',  accessToken,  getCookieOptions(15 * 60 * 1000));
       res.cookie('refresh_token', refreshToken, getCookieOptions(7 * 24 * 60 * 60 * 1000));
@@ -196,7 +207,12 @@ const AuthController = {
       return res.status(200).json({
         status:  'success',
         message: 'Login successful.',
-        data: { id: user.id, email: user.email, role: user.role }
+        data: {
+          id:              user.id,
+          email:           user.email,
+          role:            user.role,
+          organization_id: organization ? organization.id : null
+        }
       });
 
     } catch (error) {
@@ -204,7 +220,6 @@ const AuthController = {
       return res.status(500).json({ status: 'error', message: 'Internal server error.' });
     }
   },
-
   // Step 3 — silently refresh access token using refresh token
   async refreshToken(req, res) {
     try {

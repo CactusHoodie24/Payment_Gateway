@@ -46,10 +46,10 @@ router.get('/me', authMiddleware(['admin']), AuthController.getMe);
 
 
 // GET /api/login-organization
-router.post('/login-organizations', AuthController.loginUser);
+router.post('/auth/token', AuthController.loginUser);
 
-router.post('/verifyUser-otp', AuthController.verifyLoginOtp)
+router.post('/auth/verifyUser-otp', AuthController.verifyLoginOtp)
 
-router.post('/user/refresh', AuthController.refreshToken);
+router.post('/auth/refresh', AuthController.refreshToken);
 
 module.exports = router;

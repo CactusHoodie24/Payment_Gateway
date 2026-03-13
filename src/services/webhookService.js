@@ -17,43 +17,37 @@ const VALID_EVENTS   = [
 const webhookService = {
 
   async createWebhook(data) {
-    const { organization_id, url, events, description } = data;
+  const { organization_id, url, callback_url, secret, events, description } = data;
 
-    if (!organization_id) throw { status: 400, message: 'organization_id is required.' };
-    if (!url)             throw { status: 400, message: 'url is required.' };
-    if (!events || !events.length) throw { status: 400, message: 'At least one event is required.' };
+  if (!organization_id) throw { status: 400, message: 'organization_id is required.' };
+  if (!url)             throw { status: 400, message: 'url is required.' };
+  if (!callback_url)    throw { status: 400, message: 'callback_url is required.' };
+  if (!secret)          throw { status: 400, message: 'secret is required.' };
+  if (!events || !events.length) throw { status: 400, message: 'At least one event is required.' };
 
-    // Validate URL format
-    try { new URL(url); } catch {
-      throw { status: 400, message: 'url must be a valid URL.' };
-    }
+  // Validate URLs
+  try { new URL(url); }          catch { throw { status: 400, message: 'url must be a valid URL.' }; }
+  try { new URL(callback_url); } catch { throw { status: 400, message: 'callback_url must be a valid URL.' }; }
 
-    // Validate events
-    const invalidEvents = events.filter(e => !VALID_EVENTS.includes(e));
-    if (invalidEvents.length) {
-      throw { status: 400, message: `Invalid events: ${invalidEvents.join(', ')}. Valid events are: ${VALID_EVENTS.join(', ')}.` };
-    }
+  // Validate events
+  const invalidEvents = events.filter(e => !VALID_EVENTS.includes(e));
+  if (invalidEvents.length) {
+    throw { status: 400, message: `Invalid events: ${invalidEvents.join(', ')}. Valid events are: ${VALID_EVENTS.join(', ')}.` };
+  }
 
-    // Verify organization exists
-    const org = await OrganizationModel.findById(organization_id);
-    if (!org) throw { status: 404, message: 'Organization not found.' };
+  // Verify organization exists
+  const org = await OrganizationModel.findById(organization_id);
+  if (!org) throw { status: 404, message: 'Organization not found.' };
 
-    // Check for duplicate URL per organization
-    const existing = await WebhookModel.findOne({ organization_id, url });
-    if (existing) throw { status: 409, message: 'A webhook with this URL already exists for this organization.' };
+  // Check for duplicate URL per organization
+  const existing = await WebhookModel.findOne({ organization_id, url });
+  if (existing) throw { status: 409, message: 'A webhook with this URL already exists for this organization.' };
 
-    // Generate a secure secret for signing payloads
-    const secret = `whsec_${crypto.randomBytes(32).toString('hex')}`;
+  // ← use client-provided secret directly
+  const webhook = await WebhookModel.create({ organization_id, url, callback_url, secret, events, description });
 
-    const webhook = await WebhookModel.create({ organization_id, url, secret, events, description });
-
-    // Return secret ONCE — store it securely
-    return {
-      ...webhook,
-      secret,
-      note: 'Store this secret securely. It will not be shown again.'
-    };
-  },
+  return webhook;
+},
 
   async getWebhookById(id) {
     const webhook = await WebhookModel.findByIdWithDetails(id);
@@ -126,7 +120,8 @@ async dispatch(organization_id, event, payload) {
         headers: {
           'Content-Type':        'application/json',
           'X-Webhook-Event':     event,
-          'X-Webhook-Signature': `sha256=${signature}`
+          'X-Webhook-Signature': `sha256=${signature}`,
+          'X-Callback-Url':      webhook.callback_url
         },
         body
       });
