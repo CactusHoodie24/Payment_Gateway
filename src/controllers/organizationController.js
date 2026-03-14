@@ -14,6 +14,7 @@ async create(req, res) {
     console.log('📨 Request body:', req.body);
 
     const email = req.body.contactEmail;
+    const password = req.body.password;
 
     const orgResponse = await fetch(`${process.env.BASE_URL}/api/organizations/register`, {
       method:  'POST',
