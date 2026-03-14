@@ -4,7 +4,12 @@ const Joi = require('joi');
 const organizationSchema = Joi.object({
   name:                 Joi.string().required(),
   contactEmail:         Joi.string().email().required(),
-  contactPhone:         Joi.string().pattern(/^0[0-9]{9}$/).required(),
+  contactPhone: Joi.string()
+  .pattern(/^265[0-9]{9}$/)
+  .required()
+  .messages({
+    'string.pattern.base': 'contactPhone must be a valid Malawi number starting with +265 e.g. +265991234567'
+  }),
   organizationTypeId:   Joi.number().integer().positive().required(),
   description:          Joi.string().optional().allow(null, ''),
   password:             Joi.string().min(6).required(),

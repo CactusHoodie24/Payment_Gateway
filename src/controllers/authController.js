@@ -114,6 +114,8 @@ const AuthController = {
         });
       }
 
+       
+
       const user = await UserModel.findOne({ email });
       if (!user) {
         return res.status(401).json({
@@ -122,15 +124,12 @@ const AuthController = {
         });
       }
 
-      if (!user.is_activated) {
-        return res.status(403).json({
-          status:  'error',
-          message: 'Account not activated. Please set your password first.',
-          data: { id: user.id, email: user.email }
-        });
-      }
+       console.log('🔑 temp_password in DB:', user.temp_password);
+    console.log('🔑 password provided:', password);
+    console.log('✅ is_activated:', user.is_activated);
 
-      const match = await bcrypt.compare(password, user.password);
+      const match = await bcrypt.compare(password, user.temp_password);
+      console.log('🔍 bcrypt.compare result:', match);
       if (!match) {
         return res.status(401).json({
           status:  'error',

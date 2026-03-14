@@ -11,15 +11,30 @@ const organizationController = {
 
 async create(req, res) {
   try {
-    const body = camelToSnake(req.body);
-    console.log(body);
+    console.log('📨 Request body:', req.body);
 
-    const { password, ...organizationData } = body;
-    const email = body.contact_email; // ← define email once
+    const email = req.body.contactEmail;
 
-    const organization = await organizationService.createOrganization(organizationData);
+    const orgResponse = await fetch(`${process.env.BASE_URL}/api/organizations/register`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(req.body)
+    });
 
-    const user = await userService.createUser({ email, password });
+    const organization = await orgResponse.json();
+    console.log('📬 Register response:', JSON.stringify(organization, null, 2));
+
+    // Step 2 — Create user locally after successful org registration
+    const user1 = await userService.createUser({ email, password });
+    console.log('👤 User created:', user1);
+
+    if (!orgResponse.ok) {
+      throw { status: orgResponse.status, message: organization.message || 'Failed to create organization.' };
+    }
+
+    // Find the user created with the same email
+    const user = await userService.getUserByEmail(email);
+    if (!user) throw { status: 404, message: 'User not found after registration.' };
 
     // Generate unique OTP
     let code;
@@ -29,7 +44,7 @@ async create(req, res) {
       exists = await OtpModel.findOne({ code });
     } while (exists);
 
-    // Save OTP once
+    // Save OTP
     await OtpModel.create({
       channel:  'EMAIL',
       code,
@@ -39,17 +54,20 @@ async create(req, res) {
 
     // Send OTP email
     await AuthService.sendUserOtp({ email, code });
+    console.log('✅ OTP sent to:', email);
 
     return res.status(201).json({
       status:  'success',
       message: 'Organization created successfully. OTP sent to email.',
-      data: {
-        organization: snakeToCamel(organization),
-        user:         snakeToCamel({ ...user, password })
-      }
+      user: {
+          id:           user.id,
+          email:        user.email,
+          role:         user.role
+        }
     });
 
   } catch (error) {
+    console.error('❌ Error:', error);
     return res.status(error.status || 500).json({
       status:  'error',
       message: error.message || 'Internal server error.'
