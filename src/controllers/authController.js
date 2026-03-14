@@ -236,8 +236,8 @@ const AuthController = {
           id:              user.id,
           email:           user.email,
           role:            user.role,
-          organization_id: organization ? organization.id : null,
-          organization_name: organization ? organization.name : null
+          organization_id: user.organization_id,
+          organization_name: user.organization_name
         }
       });
 

@@ -37,14 +37,15 @@ const UserModel = {
     return rows;
   },
 
-  async create({ email, password, temp_password = null }) {
-    const db = getConnection();
-    const [result] = await db.query(
-      'INSERT INTO users (email, password, temp_password) VALUES (?, ?, ?)',
-      [email, password, temp_password]
-    );
-    return this.findById(result.insertId);
-  },
+ async create({ email, password, temp_password, role = 'organization', organization_id = null, organization_name = null }) {
+  const db = getConnection();
+  const [result] = await db.query(
+    `INSERT INTO users (email, password, temp_password, role, organization_id, organization_name, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    [email, password, temp_password, role, organization_id, organization_name]
+  );
+  return this.findById(result.insertId);
+},
 
   async activate(id, hashedPassword) {
     const db = getConnection();

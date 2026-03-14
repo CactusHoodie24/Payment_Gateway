@@ -7,16 +7,18 @@ const organizationService = require('./organizationService');
 
 const userService = {
 
-async createUser({ email, password }) {
+async createUser({ email, password, organization_id = null, organization_name = null }) {
   const existing = await UserModel.findOne({ email });
   if (existing) throw { status: 409, message: 'User with this email already exists.' };
 
-  const hashed = await bcrypt.hash(password, 12); // ← hash temp password
+  const hashed = await bcrypt.hash(password, 12);
 
   return await UserModel.create({
     email,
-    password:      'TEMP',
-    temp_password: hashed  // ← store hashed not plain text
+    password:          'TEMP',
+    temp_password:     hashed,
+    organization_id,
+    organization_name
   });
 },
 

@@ -13,39 +13,51 @@ async create(req, res) {
   try {
     console.log('📨 Request body:', req.body);
 
-    const email = req.body.contactEmail;
+    const email    = req.body.contactEmail;
     const password = req.body.password;
 
+    // Step 1 — Register organization
     const orgResponse = await fetch(`${process.env.BASE_URL}/api/organizations/register`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(req.body)
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': req.headers['authorization']
+      },
+      body: JSON.stringify(req.body)
     });
 
     const organization = await orgResponse.json();
+    console.log('📬 Register status:', orgResponse.status);
     console.log('📬 Register response:', JSON.stringify(organization, null, 2));
 
-    // Step 2 — Create user locally after successful org registration
-    const user1 = await userService.createUser({ email, password });
-    console.log('👤 User created:', user1);
-
+    // ← check BEFORE doing anything else
     if (!orgResponse.ok) {
-      throw { status: orgResponse.status, message: organization.message || 'Failed to create organization.' };
+      return res.status(orgResponse.status).json({
+        status:  'error',
+        message: organization.message || 'Failed to create organization.',
+        data:    organization  // ← return full response so you can see what went wrong
+      });
     }
 
-    // Find the user created with the same email
-    const user = await userService.getUserByEmail(email);
-    if (!user) throw { status: 404, message: 'User not found after registration.' };
+    // Step 2 — Create user locally
+    const user = await userService.createUser({
+  email,
+  password,
+  organization_id:   organization.id,
+  organization_name: organization.name
+});
+    console.log('👤 User created:', user);
 
-    // Generate unique OTP
+    // Step 3 — Generate unique OTP
     let code;
     let exists;
     do {
       code   = Math.floor(100000 + Math.random() * 900000).toString();
       exists = await OtpModel.findOne({ code });
     } while (exists);
+    console.log('🔑 OTP:', code);
 
-    // Save OTP
+    // Step 4 — Save OTP
     await OtpModel.create({
       channel:  'EMAIL',
       code,
@@ -53,18 +65,17 @@ async create(req, res) {
       metadata: { purpose: 'account_activation', user_id: user.id }
     });
 
-    // Send OTP email
+    // Step 5 — Send OTP email
     await AuthService.sendUserOtp({ email, code });
     console.log('✅ OTP sent to:', email);
 
     return res.status(201).json({
       status:  'success',
       message: 'Organization created successfully. OTP sent to email.',
-      user: {
-          id:           user.id,
-          email:        user.email,
-          role:         user.role
-        }
+      data: {
+        organization,
+        user: { id: user.id, email: user.email, role: user.role }
+      }
     });
 
   } catch (error) {
