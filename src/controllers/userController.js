@@ -1,5 +1,6 @@
 // src/controllers/userController.js
 const userService = require('../services/userService');
+const bcrypt = require('bcryptjs');
 
 const userController = {
 
@@ -47,51 +48,52 @@ const userController = {
     }
   },
 
-  async activate(req, res) {
-    try {
-      const { email, temp_password, password, password_confirmation } = req.body;
+async activate(req, res) {
+  try {
+    const { email, temp_password, password, password_confirmation } = req.body;
 
-      if (!email) {
-        return res.status(400).json({ status: 'error', message: 'email is required.' });
-      }
-
-      if (!temp_password) {
-        return res.status(400).json({ status: 'error', message: 'temp_password is required.' });
-      }
-
-      if (!password || !password_confirmation) {
-        return res.status(400).json({ status: 'error', message: 'password and password_confirmation are required.' });
-      }
-
-      if (password !== password_confirmation) {
-        return res.status(400).json({ status: 'error', message: 'Passwords do not match.' });
-      }
-
-      // Find user by email
-      const user = await userService.getUserByEmail(email);
-      if (!user) {
-        return res.status(404).json({ status: 'error', message: 'No account found with this email.' });
-      }
-
-      // Verify temp_password matches what was stored
-      if (user.temp_password !== temp_password) {
-        return res.status(401).json({ status: 'error', message: 'Invalid temporary password.' });
-      }
-
-      const activated = await userService.activateUser(user.id, password);
-      return res.status(200).json({
-        status:  'success',
-        message: 'Account activated successfully.',
-        data:    activated
-      });
-
-    } catch (error) {
-      return res.status(error.status || 500).json({
-        status:  'error',
-        message: error.message || 'Internal server error.'
-      });
+    if (!email) {
+      return res.status(400).json({ status: 'error', message: 'email is required.' });
     }
-  },
+
+    if (!temp_password) {
+      return res.status(400).json({ status: 'error', message: 'temp_password is required.' });
+    }
+
+    if (!password || !password_confirmation) {
+      return res.status(400).json({ status: 'error', message: 'password and password_confirmation are required.' });
+    }
+
+    if (password !== password_confirmation) {
+      return res.status(400).json({ status: 'error', message: 'Passwords do not match.' });
+    }
+
+    // Find user by email
+    const user = await userService.getUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'No account found with this email.' });
+    }
+
+    // ✅ Use bcrypt.compare instead of plain text comparison
+    const match = await bcrypt.compare(temp_password, user.temp_password);
+    if (!match) {
+      return res.status(401).json({ status: 'error', message: 'Invalid temporary password.' });
+    }
+
+    const activated = await userService.activateUser(user.id, password);
+    return res.status(200).json({
+      status:  'success',
+      message: 'Account activated successfully.',
+      data:    activated
+    });
+
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      status:  'error',
+      message: error.message || 'Internal server error.'
+    });
+  }
+},
   
   async update(req, res) {
     try {

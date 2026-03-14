@@ -7,24 +7,18 @@ const organizationService = require('./organizationService');
 
 const userService = {
 
-  async createUser({ email, password }) {
-    if (!email)    throw { status: 400, message: 'email is required.' };
-    if (!password) throw { status: 400, message: 'password is required.' };
+async createUser({ email, password }) {
+  const existing = await UserModel.findOne({ email });
+  if (existing) throw { status: 409, message: 'User with this email already exists.' };
 
-    const existing = await UserModel.findOne({ email });
-    if (existing) {
-      throw { status: 409, message: 'A user with this email already exists.' };
-    }
+  const hashed = await bcrypt.hash(password, 12); // ← hash temp password
 
-    // Store plain text in temp_password, placeholder in password column
-    const user = await UserModel.create({
-      email,
-      password:      'TEMP',   // placeholder — replaced on activation
-      temp_password: password  // plain text stored temporarily
-    });
-
-    return user;
-  },
+  return await UserModel.create({
+    email,
+    password:      'TEMP',
+    temp_password: hashed  // ← store hashed not plain text
+  });
+},
 
   async getUserById(id) {
     const user = await UserModel.findById(id);

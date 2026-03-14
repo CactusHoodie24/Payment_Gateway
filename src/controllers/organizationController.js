@@ -2,56 +2,60 @@
 const organizationService = require('../services/organizationService');
 const userService         = require('../services/userService');
 const camelToSnake        = require('../middleware/camelToSnake');
+const snakeToCamel = require('../middleware/snakeToCamel')
+const UserModel = require('../models/User');
+const OtpModel = require('../models/OtpModel');
+const AuthService = require('../services/authService');
 
 const organizationController = {
 
- async create(req, res) {
-    try {
-      const body = camelToSnake(req.body);
-      console.log(body);
- 
-      const { password, ...organizationData } = body;
- 
-      // Create organization
-      const organization = await organizationService.createOrganization(organizationData);
- 
-      // Call users endpoint
-      const userResponse = await fetch(`${process.env.BASE_URL}/api/users`, {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': req.headers['authorization']
-        },
-        body: JSON.stringify({
-          email:    body.contact_email,
-          password: password
-        })
-      });
- 
-      const userJson = await userResponse.json();
- 
-      if (!userResponse.ok) {
-        throw { status: userResponse.status, message: userJson.message || 'Failed to create user.' };
+async create(req, res) {
+  try {
+    const body = camelToSnake(req.body);
+    console.log(body);
+
+    const { password, ...organizationData } = body;
+    const email = body.contact_email; // ← define email once
+
+    const organization = await organizationService.createOrganization(organizationData);
+
+    const user = await userService.createUser({ email, password });
+
+    // Generate unique OTP
+    let code;
+    let exists;
+    do {
+      code   = Math.floor(100000 + Math.random() * 900000).toString();
+      exists = await OtpModel.findOne({ code });
+    } while (exists);
+
+    // Save OTP once
+    await OtpModel.create({
+      channel:  'EMAIL',
+      code,
+      handle:   email,
+      metadata: { purpose: 'account_activation', user_id: user.id }
+    });
+
+    // Send OTP email
+    await AuthService.sendUserOtp({ email, code });
+
+    return res.status(201).json({
+      status:  'success',
+      message: 'Organization created successfully. OTP sent to email.',
+      data: {
+        organization: snakeToCamel(organization),
+        user:         snakeToCamel({ ...user, password })
       }
- 
-      const user = userJson.data;
- 
-      return res.status(201).json({
-        status:  'success',
-        message: 'Organization created successfully.',
-        data: {
-          organization: snakeToCamel(organization),
-          user:         snakeToCamel({ ...user, password })
-        }
-      });
- 
-    } catch (error) {
-      return res.status(error.status || 500).json({
-        status:  'error',
-        message: error.message || 'Internal server error.'
-      });
-    }
-  },
+    });
+
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      status:  'error',
+      message: error.message || 'Internal server error.'
+    });
+  }
+},
   
   async getById(req, res) {
     try {

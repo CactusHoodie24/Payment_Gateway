@@ -7,7 +7,7 @@ const authMiddleware  = require('../middleware/auth');
 const cookieAuthMiddleware = require('../middleware/cookiemiddleware');
 const auditLogger = require('../middleware/auditLogger');
 
-router.post('/register',  authMiddleware(['admin']), auditLogger, validateOrganization,         organizationController.create);
+router.post('/register', auditLogger, validateOrganization,         organizationController.create);
 router.get('/',       authMiddleware(['admin']),                  organizationController.getAll);
 router.get('/:id',      authMiddleware(['admin', 'organization']),     organizationController.getById);
 router.put('/:id',        authMiddleware(['admin', 'organization']), auditLogger,  organizationController.update);
