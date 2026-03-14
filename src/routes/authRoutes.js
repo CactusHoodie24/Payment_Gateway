@@ -11,12 +11,12 @@ const userSchema = Joi.object({
   name: Joi.string().min(3).max(30).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
-  phoneNumber: Joi.string()
-    .pattern(/^[0-9]{10,15}$/) // Only digits, length 10-15
-    .required()
-    .messages({
-      'string.pattern.base': 'Phone number must be 10 to 15 digits'
-    })
+  phone_number: Joi.string()
+  .pattern(/^0[0-9]{9}$/)
+  .required()
+  .messages({
+    'string.pattern.base': 'Phone number must be a valid 10-digit Malawi number e.g. 0991234567'
+  })
 });
 
 const loginSchema = Joi.object({

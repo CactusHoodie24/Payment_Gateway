@@ -10,7 +10,7 @@ const apiLimiter = require('../middleware/rateLimiter')
 const auditLogger = require('../middleware/auditLogger');
 
 router.post('/',  authMiddleware(['admin']), auditLogger,          transactionController.create);
-router.get('/',    authMiddleware(['admin', 'organization']),         transactionController.getAll);
+router.get('/',    authMiddleware(['admin', 'organization', 'finance_manager']),         transactionController.getAll);
 router.get('/:id',  authMiddleware(['admin']),        transactionController.getById);
 router.put('/:id',  authMiddleware(['admin']), auditLogger,        transactionController.update);
 router.patch('/:id/status', authMiddleware(['admin']), auditLogger, transactionController.updateStatus);

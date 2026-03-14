@@ -1,14 +1,13 @@
 // src/models/Organization.js
-const { getConnection } = require('../db');
+const { getConnection } = require('../db'); // ← fixed import
 
 const OrganizationModel = {
 
   async findOne(fields) {
-    const db = getConnection();
-    const keys = Object.keys(fields);
+    const db    = getConnection();
+    const keys  = Object.keys(fields);
     const where = keys.map(k => `\`${k}\` = ?`).join(' AND ');
-    const values = Object.values(fields);
-    const [rows] = await db.query(`SELECT * FROM organizations WHERE ${where} LIMIT 1`, values);
+    const [rows] = await db.query(`SELECT * FROM organizations WHERE ${where} LIMIT 1`, Object.values(fields));
     return rows[0] || null;
   },
 
@@ -19,22 +18,24 @@ const OrganizationModel = {
   },
 
   async find(fields = {}) {
-    const db = getConnection();
+    const db   = getConnection();
     const keys = Object.keys(fields);
     if (keys.length === 0) {
-      const [rows] = await db.query('SELECT * FROM organizations');
+      const [rows] = await db.query('SELECT * FROM organizations ORDER BY created_at DESC');
       return rows;
     }
-    const where = keys.map(k => `\`${k}\` = ?`).join(' AND ');
-    const values = Object.values(fields);
-    const [rows] = await db.query(`SELECT * FROM organizations WHERE ${where}`, values);
+    const where  = keys.map(k => `\`${k}\` = ?`).join(' AND ');
+    const [rows] = await db.query(`SELECT * FROM organizations WHERE ${where} ORDER BY created_at DESC`, Object.values(fields));
     return rows;
   },
 
   async findWithType(id) {
     const db = getConnection();
     const [rows] = await db.query(
-      `SELECT o.*, ot.name AS organization_type_name, ot.description AS organization_type_description
+      `SELECT
+        o.*,
+        ot.name        AS organization_type_name,
+        ot.description AS organization_type_description
        FROM organizations o
        LEFT JOIN organization_types ot ON o.organization_type_id = ot.id
        WHERE o.id = ? LIMIT 1`,
@@ -43,24 +44,26 @@ const OrganizationModel = {
     return rows[0] || null;
   },
 
-  async create({
-    address_line1 = null,
-    address_line2 = null,
-    business_registration_number = null,
-    city = null,
-    contact_email,
-    contact_phone,
-    country = null,
-    description,
-    name,
-    organization_website = null,
-    region = null,
-    short_code,
-    status = 'PENDING_ACTIVE',
-    tax_identification_number = null,
-    organization_type_id = null
-  }) {
+  async create(data) {
     const db = getConnection();
+
+    // Accept both camelCase and snake_case
+    const contact_email        = data.contactEmail        || data.contact_email;
+    const contact_phone        = data.contactPhone        || data.contact_phone;
+    const organization_type_id = data.organizationTypeId  || data.organization_type_id  || null;
+    const name                 = data.name;
+    const description          = data.description                                        || null;
+    const short_code           = data.short_code                                         || null;
+    const address_line1        = data.address_line1                                      || null;
+    const address_line2        = data.address_line2                                      || null;
+    const city                 = data.city                                               || null;
+    const country              = data.country                                            || null;
+    const region               = data.region                                             || null;
+    const organization_website = data.organization_website                               || null;
+    const business_registration_number = data.business_registration_number              || null;
+    const tax_identification_number     = data.tax_identification_number                || null;
+    const status               = data.status                                             || 'PENDING_ACTIVE';
+
     const [result] = await db.query(
       `INSERT INTO organizations (
         address_line1, address_line2, business_registration_number, city,
@@ -80,13 +83,12 @@ const OrganizationModel = {
   },
 
   async findByIdAndUpdate(id, fields) {
-    const db = getConnection();
+    const db   = getConnection();
     const keys = Object.keys(fields);
-    const set = keys.map(k => `\`${k}\` = ?`).join(', ');
-    const values = [...Object.values(fields), id];
+    const set  = keys.map(k => `\`${k}\` = ?`).join(', ');
     await db.query(
       `UPDATE organizations SET ${set}, last_modified_at = NOW() WHERE id = ?`,
-      values
+      [...Object.values(fields), id]
     );
     return this.findById(id);
   },
@@ -101,7 +103,7 @@ const OrganizationModel = {
   },
 
   async findByIdAndDelete(id) {
-    const db = getConnection();
+    const db  = getConnection();
     const org = await this.findById(id);
     await db.query('DELETE FROM organizations WHERE id = ?', [id]);
     return org;
