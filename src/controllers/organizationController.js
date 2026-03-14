@@ -5,29 +5,46 @@ const camelToSnake        = require('../middleware/camelToSnake');
 
 const organizationController = {
 
-  async create(req, res) {
+ async create(req, res) {
     try {
-      const body = camelToSnake(req.body); // ← normalize once
+      const body = camelToSnake(req.body);
       console.log(body);
-
+ 
       const { password, ...organizationData } = body;
-
+ 
+      // Create organization
       const organization = await organizationService.createOrganization(organizationData);
-
-      const user = await userService.createUser({
-        email:    body.contact_email,
-        password: password
+ 
+      // Call users endpoint
+      const userResponse = await fetch(`${process.env.BASE_URL}/api/users`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': req.headers['authorization']
+        },
+        body: JSON.stringify({
+          email:    body.contact_email,
+          password: password
+        })
       });
-
+ 
+      const userJson = await userResponse.json();
+ 
+      if (!userResponse.ok) {
+        throw { status: userResponse.status, message: userJson.message || 'Failed to create user.' };
+      }
+ 
+      const user = userJson.data;
+ 
       return res.status(201).json({
         status:  'success',
         message: 'Organization created successfully.',
         data: {
-          organization,
-          user: { ...user, password }
+          organization: snakeToCamel(organization),
+          user:         snakeToCamel({ ...user, password })
         }
       });
-
+ 
     } catch (error) {
       return res.status(error.status || 500).json({
         status:  'error',
@@ -35,7 +52,7 @@ const organizationController = {
       });
     }
   },
-
+  
   async getById(req, res) {
     try {
       const organization = await organizationService.getOrganizationById(req.params.id);
