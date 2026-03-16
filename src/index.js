@@ -31,6 +31,8 @@ const webhookEventRoutes = require('./routes/webhookEventRoutes');
 const auditLogRoutes     = require('./routes/auditLogRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+
 
 
 
@@ -84,6 +86,7 @@ app.use('/api/webhook-events', webhookEventRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/service-requests', serviceRequestRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 // ── Health check ─────────────────────────────────────────────
