@@ -26,20 +26,16 @@ const serviceRequestController = {
   },
 
   // ── Service Requests ──────────────────────────────────────
-
-  // Finance Officer clicks "Add Funds" → POST /api/service-requests
   async createRequest(req, res) {
     try {
-      const body = camelToSnake(req.body);
-
+      const body    = camelToSnake(req.body);
       const request = await serviceRequestService.createRequest({
         service_type_id: body.service_type_id,
-        initiator_id:    req.user.id,   // ← always from token
+        initiator_id:    req.user.id,
         account_id:      body.account_id,
         amount:          body.amount,
         description:     body.description
       });
-
       return res.status(201).json({
         status:  'success',
         message: 'Service request submitted. Awaiting approval.',
@@ -73,7 +69,7 @@ const serviceRequestController = {
     }
   },
 
-  // Finance Manager approves → auto-disburses float
+  // Finance Manager approves → service handles all logic
   async approveRequest(req, res) {
     try {
       const request = await serviceRequestService.approveRequest(req.params.id, req.user.id);
@@ -87,7 +83,6 @@ const serviceRequestController = {
     }
   },
 
-  // Finance Manager denies
   async denyRequest(req, res) {
     try {
       const { denial_reason } = camelToSnake(req.body);
