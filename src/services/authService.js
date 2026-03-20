@@ -3,7 +3,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { Resend } = require('resend');
 const AdminModel = require('../models/Admin');
-const OtpModel   = require('../models/OtpModel');
+const OtpModel   = require('../models/OtPModel');
 const UserModel = require('../models/User');
 
 const resend = new Resend(process.env.RESEND_API_KEY);

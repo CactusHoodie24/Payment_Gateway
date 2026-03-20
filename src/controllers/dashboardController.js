@@ -10,52 +10,45 @@ const dashboardController = {
       const org  = req.user.organization_id;
 
       // ── Date range — today ──────────────────────────────
-      const today    = new Date();
-      const dateStr  = today.toISOString().slice(0, 10);
-      const todayStart = `${dateStr} 00:00:00`;
-      const todayEnd   = `${dateStr} 23:59:59`;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const todayStartStr = todayStart.toISOString().slice(0, 19).replace('T', ' ');
+      const todayEndStr   = todayEnd.toISOString().slice(0, 19).replace('T', ' ');
 
       if (role === 'organization') {
         // ── Organization dashboard ──────────────────────────
 
-        // Accounts for this org
+        // Today's transactions for this org
+        const [txnRows] = await db.query(
+          `SELECT
+            COUNT(*)                                          AS total_transactions,
+            SUM(transaction_amount)                           AS total_revenue,
+            SUM(CASE WHEN status = 'COMPLETED'  THEN 1 ELSE 0 END) AS successful,
+            SUM(CASE WHEN status = 'PENDING'    THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN status = 'FAILED'     THEN 1 ELSE 0 END) AS failed,
+            SUM(CASE WHEN status = 'CANCELLED'  THEN 1 ELSE 0 END) AS cancelled,
+            SUM(CASE WHEN status = 'REVERSED'   THEN 1 ELSE 0 END) AS reversed,
+            SUM(CASE WHEN status = 'COMPLETED'  THEN transaction_amount ELSE 0 END) AS successful_revenue,
+            SUM(CASE WHEN status = 'PENDING'    THEN transaction_amount ELSE 0 END) AS pending_revenue
+           FROM transactions
+           WHERE created_at BETWEEN ? AND ?`,
+          [todayStartStr, todayEndStr]
+        );
+
+        // Account balances for this org
         const [accountRows] = await db.query(
           `SELECT
-            COUNT(*)               AS total_accounts,
             SUM(available_balance) AS total_balance,
-            SUM(ledger_balance)    AS total_ledger_balance,
-            SUM(reserved_balance)  AS total_reserved_balance
+            COUNT(*)               AS total_accounts
            FROM accounts
            WHERE organization_id = ? AND account_status = 'ACTIVE'`,
           [org]
         );
 
-        // Today's account entries for this org (via accounts)
-        const [entryRows] = await db.query(
-          `SELECT
-            COUNT(*)                                                          AS total_entries,
-            SUM(ae.amount)                                                    AS total_amount,
-            SUM(CASE WHEN ae.entry_type = 'CREDIT' THEN ae.amount ELSE 0 END) AS total_credits,
-            SUM(CASE WHEN ae.entry_type = 'DEBIT'  THEN ae.amount ELSE 0 END) AS total_debits,
-            SUM(CASE WHEN ae.entry_type = 'CREDIT' THEN 1 ELSE 0 END)         AS credit_count,
-            SUM(CASE WHEN ae.entry_type = 'DEBIT'  THEN 1 ELSE 0 END)         AS debit_count
-           FROM account_entries ae
-           INNER JOIN accounts a ON ae.account_id = a.id
-           WHERE a.organization_id = ?
-             AND ae.created_at BETWEEN ? AND ?`,
-          [org, todayStart, todayEnd]
-        );
-
-        // Pending service requests for this org's accounts
-        const [serviceRows] = await db.query(
-          `SELECT COUNT(*) AS pending_requests
-           FROM service_requests sr
-           INNER JOIN accounts a ON sr.account_id = a.id
-           WHERE a.organization_id = ? AND sr.state = 'PENDING'`,
-          [org]
-        );
-
-        // Active webhooks
+        // Webhooks for this org
         const [webhookRows] = await db.query(
           `SELECT COUNT(*) AS total_webhooks
            FROM webhooks
@@ -63,93 +56,72 @@ const dashboardController = {
           [org]
         );
 
-        // Recent account entries — last 5
-        const [recentEntries] = await db.query(
-          `SELECT
-            ae.entry_reference,
-            ae.entry_type,
-            ae.amount,
-            ae.balance_before,
-            ae.balance_after,
-            ae.description,
-            ae.created_at,
-            a.account_number,
-            a.account_name
-           FROM account_entries ae
-           INNER JOIN accounts a ON ae.account_id = a.id
-           WHERE a.organization_id = ?
-           ORDER BY ae.created_at DESC
-           LIMIT 5`,
-          [org]
-        );
-
+        const txn      = txnRows[0];
         const accounts = accountRows[0];
-        const entries  = entryRows[0];
-        const services = serviceRows[0];
         const webhooks = webhookRows[0];
+
+        const total      = parseInt(txn.total_transactions) || 0;
+        const successful = parseInt(txn.successful)         || 0;
+        const successRate = total > 0 ? ((successful / total) * 100).toFixed(2) : '0.00';
 
         return res.status(200).json({
           status: 'success',
           data: {
-            date: dateStr,
+            date:  new Date().toISOString().slice(0, 10),
+            transactions: {
+              total:             total,
+              successful:        successful,
+              pending:           parseInt(txn.pending)   || 0,
+              failed:            parseInt(txn.failed)    || 0,
+              cancelled:         parseInt(txn.cancelled) || 0,
+              reversed:          parseInt(txn.reversed)  || 0,
+              success_rate:      `${successRate}%`,
+              total_revenue:     txn.total_revenue        || 0,
+              successful_revenue: txn.successful_revenue  || 0,
+              pending_settlement: txn.pending_revenue     || 0
+            },
             accounts: {
-              total_accounts:         parseInt(accounts.total_accounts)      || 0,
-              total_balance:          parseFloat(accounts.total_balance)     || 0,
-              total_ledger_balance:   parseFloat(accounts.total_ledger_balance)   || 0,
-              total_reserved_balance: parseFloat(accounts.total_reserved_balance) || 0
-            },
-            today_activity: {
-              total_entries:  parseInt(entries.total_entries)  || 0,
-              total_credits:  parseFloat(entries.total_credits) || 0,
-              total_debits:   parseFloat(entries.total_debits)  || 0,
-              credit_count:   parseInt(entries.credit_count)   || 0,
-              debit_count:    parseInt(entries.debit_count)    || 0,
-              net_movement:   (parseFloat(entries.total_credits) || 0) - (parseFloat(entries.total_debits) || 0)
-            },
-            service_requests: {
-              pending: parseInt(services.pending_requests) || 0
+              total_accounts: parseInt(accounts.total_accounts) || 0,
+              total_balance:  accounts.total_balance            || 0
             },
             webhooks: {
               active: parseInt(webhooks.total_webhooks) || 0
-            },
-            recent_entries: recentEntries
+            }
           }
         });
 
       } else {
         // ── Admin dashboard ─────────────────────────────────
 
-        // Today's account entries — all orgs
-        const [entryRows] = await db.query(
+        // Today's transactions — all orgs
+        const [txnRows] = await db.query(
           `SELECT
-            COUNT(*)                                                          AS total_entries,
-            SUM(ae.amount)                                                    AS total_amount,
-            SUM(CASE WHEN ae.entry_type = 'CREDIT' THEN ae.amount ELSE 0 END) AS total_credits,
-            SUM(CASE WHEN ae.entry_type = 'DEBIT'  THEN ae.amount ELSE 0 END) AS total_debits,
-            SUM(CASE WHEN ae.entry_type = 'CREDIT' THEN 1 ELSE 0 END)         AS credit_count,
-            SUM(CASE WHEN ae.entry_type = 'DEBIT'  THEN 1 ELSE 0 END)         AS debit_count
-           FROM account_entries ae
-           WHERE ae.created_at BETWEEN ? AND ?`,
-          [todayStart, todayEnd]
+            COUNT(*)                                                AS total_transactions,
+            SUM(transaction_amount)                                 AS total_revenue,
+            SUM(CASE WHEN status = 'COMPLETED'  THEN 1 ELSE 0 END) AS successful,
+            SUM(CASE WHEN status = 'PENDING'    THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN status = 'FAILED'     THEN 1 ELSE 0 END) AS failed,
+            SUM(CASE WHEN status = 'CANCELLED'  THEN 1 ELSE 0 END) AS cancelled,
+            SUM(CASE WHEN status = 'REVERSED'   THEN 1 ELSE 0 END) AS reversed,
+            SUM(CASE WHEN status = 'COMPLETED'  THEN transaction_amount ELSE 0 END) AS successful_revenue,
+            SUM(CASE WHEN status = 'PENDING'    THEN transaction_amount ELSE 0 END) AS pending_settlement
+           FROM transactions
+           WHERE created_at BETWEEN ? AND ?`,
+          [todayStartStr, todayEndStr]
         );
 
-        // All time entries
-        const [allTimeRows] = await db.query(
-          `SELECT
-            COUNT(*)               AS total_entries,
-            SUM(amount)            AS total_amount,
-            SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END) AS total_credits,
-            SUM(CASE WHEN entry_type = 'DEBIT'  THEN amount ELSE 0 END) AS total_debits
-           FROM account_entries`
+        // All time transactions count
+        const [allTimeTxn] = await db.query(
+          `SELECT COUNT(*) AS total FROM transactions`
         );
 
         // Organizations summary
         const [orgRows] = await db.query(
           `SELECT
-            COUNT(*)                                                          AS total,
-            SUM(CASE WHEN status = 'ACTIVE'        THEN 1 ELSE 0 END)        AS active,
-            SUM(CASE WHEN status = 'PENDING_ACTIVE' THEN 1 ELSE 0 END)       AS pending_active,
-            SUM(CASE WHEN status = 'SUSPENDED'      THEN 1 ELSE 0 END)       AS suspended
+            COUNT(*)                                                   AS total,
+            SUM(CASE WHEN status = 'ACTIVE'         THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status = 'PENDING_ACTIVE'  THEN 1 ELSE 0 END) AS pending_active,
+            SUM(CASE WHEN status = 'SUSPENDED'       THEN 1 ELSE 0 END) AS suspended
            FROM organizations`
         );
 
@@ -157,85 +129,60 @@ const dashboardController = {
         const [accountRows] = await db.query(
           `SELECT
             COUNT(*)               AS total_accounts,
-            SUM(available_balance) AS total_balance,
-            SUM(ledger_balance)    AS total_ledger_balance
+            SUM(available_balance) AS total_balance
            FROM accounts
            WHERE account_status = 'ACTIVE'`
         );
 
         // Pending service requests
         const [serviceRows] = await db.query(
-          `SELECT COUNT(*) AS pending_requests FROM service_requests WHERE state = 'PENDING'`
+          `SELECT COUNT(*) AS pending_requests
+           FROM service_requests
+           WHERE state = 'PENDING'`
         );
 
-        // Top accounts by credit activity today
-        const [topAccounts] = await db.query(
+        // Top organizations by transaction volume today
+        const [topOrgs] = await db.query(
           `SELECT
-            a.id,
-            a.account_number,
-            a.account_name,
-            a.account_type,
-            a.available_balance,
-            o.name       AS organization_name,
-            o.short_code AS organization_short_code,
-            COUNT(ae.entry_reference)                                          AS entry_count,
-            SUM(CASE WHEN ae.entry_type = 'CREDIT' THEN ae.amount ELSE 0 END) AS total_credits,
-            SUM(CASE WHEN ae.entry_type = 'DEBIT'  THEN ae.amount ELSE 0 END) AS total_debits
-           FROM account_entries ae
-           INNER JOIN accounts      a ON ae.account_id      = a.id
-           LEFT  JOIN organizations o ON a.organization_id  = o.id
-           WHERE ae.created_at BETWEEN ? AND ?
-           GROUP BY a.id, a.account_number, a.account_name, a.account_type,
-                    a.available_balance, o.name, o.short_code
-           ORDER BY total_credits DESC
+            o.name,
+            o.short_code,
+            COUNT(t.transaction_id)  AS transaction_count,
+            SUM(t.transaction_amount) AS total_amount
+           FROM transactions t
+           LEFT JOIN transaction_types tt ON t.transaction_type_id = tt.id
+           LEFT JOIN organizations o ON o.id = 1
+           WHERE t.created_at BETWEEN ? AND ?
+           GROUP BY o.id
+           ORDER BY total_amount DESC
            LIMIT 5`,
-          [todayStart, todayEnd]
+          [todayStartStr, todayEndStr]
         );
 
-        // Recent entries — last 10
-        const [recentEntries] = await db.query(
-          `SELECT
-            ae.entry_reference,
-            ae.entry_type,
-            ae.amount,
-            ae.balance_before,
-            ae.balance_after,
-            ae.description,
-            ae.created_at,
-            a.account_number,
-            a.account_name,
-            o.name       AS organization_name,
-            o.short_code AS organization_short_code
-           FROM account_entries ae
-           INNER JOIN accounts      a ON ae.account_id     = a.id
-           LEFT  JOIN organizations o ON a.organization_id = o.id
-           ORDER BY ae.created_at DESC
-           LIMIT 10`
-        );
-
-        const entries  = entryRows[0];
-        const allTime  = allTimeRows[0];
+        const txn      = txnRows[0];
         const orgs     = orgRows[0];
         const accounts = accountRows[0];
         const services = serviceRows[0];
 
+        const total       = parseInt(txn.total_transactions) || 0;
+        const successful  = parseInt(txn.successful)         || 0;
+        const successRate = total > 0 ? ((successful / total) * 100).toFixed(2) : '0.00';
+
         return res.status(200).json({
           status: 'success',
           data: {
-            date: dateStr,
-            today_activity: {
-              total_entries:  parseInt(entries.total_entries)   || 0,
-              total_credits:  parseFloat(entries.total_credits) || 0,
-              total_debits:   parseFloat(entries.total_debits)  || 0,
-              credit_count:   parseInt(entries.credit_count)    || 0,
-              debit_count:    parseInt(entries.debit_count)     || 0,
-              net_movement:   (parseFloat(entries.total_credits) || 0) - (parseFloat(entries.total_debits) || 0)
-            },
-            all_time: {
-              total_entries:  parseInt(allTime.total_entries)   || 0,
-              total_credits:  parseFloat(allTime.total_credits) || 0,
-              total_debits:   parseFloat(allTime.total_debits)  || 0,
-              total_amount:   parseFloat(allTime.total_amount)  || 0
+            date: new Date().toISOString().slice(0, 10),
+            transactions: {
+              today_total:        total,
+              today_successful:   successful,
+              today_pending:      parseInt(txn.pending)    || 0,
+              today_failed:       parseInt(txn.failed)     || 0,
+              today_cancelled:    parseInt(txn.cancelled)  || 0,
+              today_reversed:     parseInt(txn.reversed)   || 0,
+              success_rate:       `${successRate}%`,
+              today_revenue:      txn.total_revenue         || 0,
+              successful_revenue: txn.successful_revenue    || 0,
+              pending_settlement: txn.pending_settlement    || 0,
+              all_time_total:     parseInt(allTimeTxn[0].total) || 0
             },
             organizations: {
               total:          parseInt(orgs.total)          || 0,
@@ -244,26 +191,13 @@ const dashboardController = {
               suspended:      parseInt(orgs.suspended)      || 0
             },
             accounts: {
-              total_accounts:       parseInt(accounts.total_accounts)       || 0,
-              total_balance:        parseFloat(accounts.total_balance)      || 0,
-              total_ledger_balance: parseFloat(accounts.total_ledger_balance) || 0
+              total_accounts: parseInt(accounts.total_accounts) || 0,
+              total_balance:  accounts.total_balance            || 0
             },
             service_requests: {
               pending: parseInt(services.pending_requests) || 0
             },
-            top_accounts: topAccounts.map(a => ({
-              id:                    a.id,
-              account_number:        a.account_number,
-              account_name:          a.account_name,
-              account_type:          a.account_type,
-              available_balance:     parseFloat(a.available_balance) || 0,
-              organization_name:     a.organization_name,
-              organization_short_code: a.organization_short_code,
-              entry_count:           parseInt(a.entry_count)    || 0,
-              total_credits:         parseFloat(a.total_credits) || 0,
-              total_debits:          parseFloat(a.total_debits)  || 0
-            })),
-            recent_entries: recentEntries
+            top_organizations: topOrgs
           }
         });
       }

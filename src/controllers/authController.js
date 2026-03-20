@@ -4,7 +4,7 @@ const auditService = require('../services/auditService');
 const UserModel   = require('../models/User');
 const bcrypt      = require('bcryptjs');
 const jwt         = require('jsonwebtoken');
-const OtpModel    = require('../models/OtpModel');
+const OtpModel    = require('../models/OtPModel');
 const OrganizationModel = require('../models/OrganizationModel');
 const { logAudit } = require('../middleware/auditLogger');
 

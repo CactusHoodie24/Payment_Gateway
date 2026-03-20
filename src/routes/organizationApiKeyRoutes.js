@@ -5,7 +5,7 @@ const organizationApiKeyController = require('../controllers/organizationApiKeyC
 const authMiddleware  = require('../middleware/auth');
 const auditLogger = require('../middleware/auditLogger');
 
-router.post('/generate',  authMiddleware(['admin']), auditLogger,                         organizationApiKeyController.generate);
+router.post('/generate',  authMiddleware(['admin', 'organization']), auditLogger,                         organizationApiKeyController.generate);
 router.get('/',           authMiddleware(['admin']),                         organizationApiKeyController.getAll);
 router.get('/:id',        authMiddleware(['admin']),                         organizationApiKeyController.getById);
 router.get('/organization/:organization_id', authMiddleware(['admin']),      organizationApiKeyController.getByOrganization);

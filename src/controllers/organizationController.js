@@ -4,7 +4,7 @@ const userService         = require('../services/userService');
 const camelToSnake        = require('../middleware/camelToSnake');
 const snakeToCamel = require('../middleware/snakeToCamel')
 const UserModel = require('../models/User');
-const OtpModel = require('../models/OtpModel');
+const OtpModel = require('../models/OtPModel');
 const AuthService = require('../services/authService');
 
 const organizationController = {
