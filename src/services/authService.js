@@ -3,7 +3,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { Resend } = require('resend');
 const AdminModel = require('../models/Admin');
-const OtpModel   = require('../models/OtPModel');
+const OtPModel   = require('../models/OtPModel');
 const UserModel = require('../models/User');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -107,7 +107,7 @@ const AuthService = {
     }
 
     // Find the OTP in the otps table by code and handle (email)
-    const otpRecord = await OtpModel.findOne({ code: otp, handle: email });
+    const otpRecord = await OtPModel.findOne({ code: otp, handle: email });
 
     if (!otpRecord) {
       throw { status: 400, message: 'Invalid OTP.' };
@@ -122,7 +122,7 @@ const AuthService = {
     }
 
     // Mark OTP as used
-    await OtpModel.updateStatus(otpRecord.id, 'USED');
+    await OtPModel.updateStatus(otpRecord.id, 'USED');
 
     // Mark admin as verified
     const verified = await AdminModel.verify(admin.id);
@@ -160,11 +160,11 @@ const AuthService = {
   let exists;
   do {
     code   = Math.floor(100000 + Math.random() * 900000).toString();
-    exists = await OtpModel.findOne({ code });
+    exists = await OtPModel.findOne({ code });
   } while (exists);
 
   // Save OTP to otps table
-  await OtpModel.create({
+  await OtPModel.create({
     channel:  'EMAIL',
     code,
     handle:   email,

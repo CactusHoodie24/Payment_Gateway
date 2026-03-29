@@ -4,7 +4,7 @@ const userService         = require('../services/userService');
 const camelToSnake        = require('../middleware/camelToSnake');
 const snakeToCamel = require('../middleware/snakeToCamel')
 const UserModel = require('../models/User');
-const OtpModel = require('../models/OtPModel');
+const OtPModel = require('../models/OtPModel');
 const AuthService = require('../services/authService');
 
 const organizationController = {
@@ -53,12 +53,12 @@ async create(req, res) {
     let exists;
     do {
       code   = Math.floor(100000 + Math.random() * 900000).toString();
-      exists = await OtpModel.findOne({ code });
+      exists = await OtPModel.findOne({ code });
     } while (exists);
     console.log('🔑 OTP:', code);
 
     // Step 4 — Save OTP
-    await OtpModel.create({
+    await OtPModel.create({
       channel:  'EMAIL',
       code,
       handle:   email,

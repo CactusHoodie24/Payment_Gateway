@@ -4,7 +4,7 @@ const auditService = require('../services/auditService');
 const UserModel   = require('../models/User');
 const bcrypt      = require('bcryptjs');
 const jwt         = require('jsonwebtoken');
-const OtpModel    = require('../models/OtPModel');
+const OtPModel    = require('../models/OtPModel');
 const OrganizationModel = require('../models/OrganizationModel');
 const { logAudit } = require('../middleware/auditLogger');
 
@@ -142,10 +142,10 @@ const AuthController = {
       let exists;
       do {
         code   = Math.floor(100000 + Math.random() * 900000).toString();
-        exists = await OtpModel.findOne({ code });
+        exists = await OtPModel.findOne({ code });
       } while (exists);
 
-      await OtpModel.create({
+      await OtPModel.create({
         channel:  'EMAIL',
         code,
         handle:   email,
@@ -181,7 +181,7 @@ const AuthController = {
         });
       }
 
-      const otpRecord = await OtpModel.findOne({ code: otp, handle: email });
+      const otpRecord = await OtPModel.findOne({ code: otp, handle: email });
 
       if (!otpRecord) {
         return res.status(400).json({ status: 'error', message: 'Invalid OTP.' });
@@ -195,7 +195,7 @@ const AuthController = {
         return res.status(410).json({ status: 'error', message: 'OTP has expired.' });
       }
 
-      await OtpModel.updateStatus(otpRecord.id, 'USED');
+      await OtPModel.updateStatus(otpRecord.id, 'USED');
 
       const user = await UserModel.findOne({ email });
 
