@@ -1,0 +1,21 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code
+        working-directory: /home/cactushoodie24/projects/malipo/malipoApiGateway
+        run: git pull origin main
+
+      - name: Rebuild and restart backend
+        working-directory: /home/cactushoodie24/projects/malipo
+        run: docker compose up -d --build backend
+
+      - name: Verify backend is running
+        run: docker ps | grep backend
