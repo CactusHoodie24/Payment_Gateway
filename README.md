@@ -1,4 +1,4 @@
-# FundMe Malawi Backend - Malipo API Gateway
+# Payment Gateway
 
 A comprehensive, enterprise-grade fintech backend platform for managing financial transactions, organizations, merchants, and digital payments in Malawi. Built with Node.js, Express, and MySQL, this API gateway powers the complete financial operations ecosystem.
 
@@ -727,8 +727,8 @@ CMD ["node", "src/index.js"]
 
 Build and run:
 ```bash
-docker build -t fundme-backend:1.0 .
-docker run -p 5000:5000 --env-file .env fundme-backend:1.0
+docker build -t payment-backend:1.0 .
+docker run -p 5000:5000 --env-file .env payment-backend:1.0
 ```
 
 ### Environment Configuration for Production
