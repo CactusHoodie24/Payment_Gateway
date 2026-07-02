@@ -7,7 +7,7 @@ const OtPModel   = require('../models/OtPModel');
 const UserModel = require('../models/User');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = 'Malipo Gateway Malawi <onboarding@resend.dev>';
+const FROM   = 'Test Admin <noreply@test-admin.stoneageengines.tech>';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function generateOtp() {
